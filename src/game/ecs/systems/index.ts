@@ -9,3 +9,6 @@ export { createFactionSystem, areFactionsHostile } from './FactionSystem.js';
 export { createBuildingSystem } from './BuildingSystem.js';
 export { createReproductionSystem } from './ReproductionSystem.js';
 export { createCombatSystem } from './CombatSystem.js';
+export { createRelationshipSystem } from './RelationshipSystem.js';
+export { createStorytellerSystem } from './StorytellerSystem.js';
+export type { StorytellerDeps } from './StorytellerSystem.js';

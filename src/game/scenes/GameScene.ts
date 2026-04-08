@@ -19,6 +19,8 @@ import { createFactionSystem } from '@/game/ecs/systems/FactionSystem.js';
 import { createBuildingSystem } from '@/game/ecs/systems/BuildingSystem.js';
 import { createReproductionSystem } from '@/game/ecs/systems/ReproductionSystem.js';
 import { createCombatSystem } from '@/game/ecs/systems/CombatSystem.js';
+import { createRelationshipSystem } from '@/game/ecs/systems/RelationshipSystem.js';
+import { createStorytellerSystem } from '@/game/ecs/systems/StorytellerSystem.js';
 import { spawnCreature, entityTypes } from '@/game/ecs/factories/CreatureFactory.js';
 import { TileMap } from '@/world/TileMap.js';
 import { TerraformTool } from '@/god/TerraformTool.js';
@@ -128,12 +130,14 @@ export class GameScene extends Phaser.Scene {
     this.ecsHost.registerSystem(createMovementSystem(worldWidth, worldHeight));
     this.ecsHost.registerSystem(createRenderSyncSystem(this, this.sprites));
 
-    // Wave 6 systems: Resource → Faction → Building → Reproduction → Combat
+    // Wave 6 systems: Resource → Faction → Relationship → Building → Reproduction → Combat → Storyteller
     this.ecsHost.registerSystem(createResourceSystem());
     this.ecsHost.registerSystem(createFactionSystem());
+    this.ecsHost.registerSystem(createRelationshipSystem());
     this.ecsHost.registerSystem(createBuildingSystem(tileMap));
     this.ecsHost.registerSystem(createReproductionSystem(this, this.sprites));
     this.ecsHost.registerSystem(createCombatSystem(this.sprites));
+    this.ecsHost.registerSystem(createStorytellerSystem({ worldWidth, worldHeight }));
 
     // Spawn test creatures around the center of the world
     const cx = worldWidth / 2;
@@ -300,6 +304,41 @@ export class GameScene extends Phaser.Scene {
       this.autoSaveTimer = 0;
       this.autoSave(1);
     }
+
+    // ── Wave 8: Entity hover detection ──────────────────────────────────
+    this.detectEntityHover();
+  }
+
+  // ── Wave 8: Hover detection for tooltips ──────────────────────────
+
+  private hoverFrameCounter: number = 0;
+
+  private detectEntityHover(): void {
+    // Run every 3 frames to reduce overhead
+    this.hoverFrameCounter++;
+    if (this.hoverFrameCounter % 3 !== 0) return;
+
+    const pointer = this.input.activePointer;
+    const cam = this.cameras.main;
+    const worldX = cam.scrollX + pointer.x / cam.zoom;
+    const worldY = cam.scrollY + pointer.y / cam.zoom;
+
+    const HOVER_RADIUS = 24;
+    let closestEid = -1;
+    let closestDist = HOVER_RADIUS;
+
+    for (const [eid, sprite] of this.sprites) {
+      if (!hasComponent(this.ecsHost.world, eid, Selectable)) continue;
+      const dx = sprite.x - worldX;
+      const dy = sprite.y - worldY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestEid = eid;
+      }
+    }
+
+    eventBus.emit('entity:hover', { entityId: closestEid, worldX, worldY });
   }
 
   // ── Public API for SaveManager ────────────────────────────────────────

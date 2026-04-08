@@ -11,6 +11,13 @@ import { SaveManager } from '@/game/save/SaveManager.js';
 import { AudioManager } from '@/game/audio/AudioManager.js';
 import Position from '@/game/ecs/components/Position.js';
 import { Selectable } from '@/game/ecs/components/TagComponents.js';
+import { SelectionManager } from '@/ui/SelectionManager.js';
+import { ContextMenu } from '@/ui/ContextMenu.js';
+import { Tooltip } from '@/ui/Tooltip.js';
+import { DragSelect } from '@/ui/DragSelect.js';
+import { eventBus } from '@/core/EventBus.js';
+
+const PANEL_WIDTH = 180;
 
 export class HUDScene extends Phaser.Scene {
   private timeControls: TimeControls | null = null;
@@ -40,9 +47,23 @@ export class HUDScene extends Phaser.Scene {
 
   private audioManager: AudioManager;
 
+  // Wave 8: Selection & interaction systems
+  private selectionManager: SelectionManager;
+  private contextMenu: ContextMenu;
+  private tooltip: Tooltip;
+  private dragSelect: DragSelect;
+  private selectionCountText: Phaser.GameObjects.Text | null = null;
+
+  // Hover tracking
+  private lastHoveredEntityId: number | null = null;
+
   constructor() {
     super('HUD');
     this.audioManager = AudioManager.getInstance();
+    this.selectionManager = SelectionManager.getInstance();
+    this.contextMenu = new ContextMenu(this);
+    this.tooltip = new Tooltip(this);
+    this.dragSelect = new DragSelect(this);
   }
 
   create(): void {
@@ -86,8 +107,23 @@ export class HUDScene extends Phaser.Scene {
     this.fpsText.setScrollFactor(0);
     this.fpsText.setDepth(1000);
 
-    // 8. Listen for entity selection clicks on GameScene
+    // 8. Selection count text (next to TopBar)
+    this.selectionCountText = this.add.text(10, 48, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#f1c40f',
+    });
+    this.selectionCountText.setScrollFactor(0);
+    this.selectionCountText.setDepth(1000);
+
+    // 9. Listen for entity selection clicks on GameScene
     this.setupEntitySelection();
+
+    // 10. Setup drag-select, context menu, and tooltip input hooks on GameScene
+    this.setupDragSelect();
+    this.setupContextMenu();
+    this.setupTooltip();
+    this.setupSelectionChangeListener();
 
     // ── Wave 7: Save/Load UI ──────────────────────────────────────────
 
@@ -118,6 +154,167 @@ export class HUDScene extends Phaser.Scene {
     // Handle resize
     this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
       this.handleResize(gameSize.width, gameSize.height);
+    });
+  }
+
+  // ── Wave 8: Drag-select setup ─────────────────────────────────────
+
+  private setupDragSelect(): void {
+    const gameScene = this.getGameSceneObject();
+    if (!gameScene) return;
+    const gameInput = gameScene.input;
+
+    gameInput.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!pointer.leftButtonDown()) return;
+      const inputHandler = this.getInputHandler();
+      if (inputHandler && inputHandler.getActivePower()) return;
+      this.dragSelect.onPointerDown(pointer, this.isShiftDown());
+    });
+
+    gameInput.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      this.dragSelect.onPointerMove(pointer);
+    });
+
+    gameInput.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      const shiftKey = this.isShiftDown();
+      const wasDrag = this.dragSelect.onPointerUp(
+        pointer,
+        shiftKey,
+        this.getECSWorld(),
+        this.getSpritesMap(),
+      );
+
+      // If it was a drag selection, don't do single-click selection
+      if (wasDrag) return;
+    });
+  }
+
+  // ── Wave 8: Context menu setup ─────────────────────────────────────
+
+  private setupContextMenu(): void {
+    const gameScene = this.getGameSceneObject();
+    if (!gameScene) return;
+    const gameInput = gameScene.input;
+
+    // Right-click: open context menu
+    gameInput.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!pointer.rightButtonDown()) return;
+
+      // Don't open if context menu is already visible (click outside will close)
+      if (this.contextMenu.getIsVisible()) {
+        this.contextMenu.hide();
+        return;
+      }
+
+      const world = this.getECSWorld();
+      const cam = gameScene.cameras.main;
+      const worldX = cam.scrollX + pointer.x / cam.zoom;
+      const worldY = cam.scrollY + pointer.y / cam.zoom;
+
+      // Find entity under cursor
+      const sprites = this.getSpritesMap();
+      let closestEid: number | null = null;
+      let closestDist = 24;
+
+      if (world && sprites) {
+        for (const [eid, sprite] of sprites) {
+          if (!hasComponent(world, eid, Selectable)) continue;
+          const dx = sprite.x - worldX;
+          const dy = sprite.y - worldY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestEid = eid;
+          }
+        }
+      }
+
+      if (closestEid !== null && world) {
+        this.contextMenu.showForEntity(pointer.x, pointer.y, closestEid, world);
+      } else {
+        this.contextMenu.showForEmptyTile(pointer.x, pointer.y);
+      }
+    });
+
+    // Click outside context menu closes it
+    gameInput.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!pointer.leftButtonDown()) return;
+      if (this.contextMenu.getIsVisible()) {
+        this.contextMenu.hide();
+      }
+    });
+
+    // Escape closes context menu — set up on GameScene keyboard
+    const gameKeyboard = gameScene.input.keyboard;
+    if (gameKeyboard) {
+      gameKeyboard.on('keydown-ESC', () => {
+        if (this.contextMenu.getIsVisible()) {
+          this.contextMenu.hide();
+        }
+      });
+
+      // 'C' key opens context menu at cursor
+      gameKeyboard.on('keydown-C', () => {
+        if (this.contextMenu.getIsVisible()) {
+          this.contextMenu.hide();
+          return;
+        }
+        const pointer = gameScene.input.activePointer;
+        this.contextMenu.showForEmptyTile(pointer.x, pointer.y);
+      });
+    }
+
+    // Listen for context menu actions to integrate with EntityInfoPanel
+    eventBus.on('contextmenu:action', (data) => {
+      if (data.action === 'inspect' && data.entityId >= 0) {
+        const world = this.getECSWorld();
+        if (world) {
+          this.entityInfoPanel?.selectEntity(data.entityId, world);
+        }
+      }
+    });
+  }
+
+  // ── Wave 8: Tooltip setup ─────────────────────────────────────────
+
+  private setupTooltip(): void {
+    // Listen for entity:hover events from GameScene
+    eventBus.on('entity:hover', (data) => {
+      const world = this.getECSWorld();
+      if (!world) return;
+
+      const gameScene = this.scene.get('Game');
+      const pointer = gameScene.input.activePointer;
+
+      if (data.entityId >= 0) {
+        this.tooltip.startHover(data.entityId, world, pointer);
+        this.lastHoveredEntityId = data.entityId;
+      } else {
+        this.tooltip.hide();
+        this.lastHoveredEntityId = null;
+      }
+    });
+  }
+
+  // ── Wave 8: Selection change listener ─────────────────────────────
+
+  private setupSelectionChangeListener(): void {
+    eventBus.on('selection:changed', (data) => {
+      // Update selection count text
+      if (this.selectionCountText) {
+        const count = data.selectedIds.length;
+        this.selectionCountText.setText(count > 0 ? `Selected: ${count}` : '');
+      }
+
+      // If single entity selected, show in EntityInfoPanel
+      if (data.selectedIds.length === 1) {
+        const world = this.getECSWorld();
+        if (world) {
+          this.entityInfoPanel?.selectEntity(data.selectedIds[0], world);
+        }
+      } else if (data.selectedIds.length === 0) {
+        this.entityInfoPanel?.deselect();
+      }
     });
   }
 
@@ -322,6 +519,9 @@ export class HUDScene extends Phaser.Scene {
       const inputHandler = this.getInputHandler();
       if (inputHandler && inputHandler.getActivePower()) return;
 
+      // Skip if drag-select is active — drag-select handles its own selection
+      if (this.dragSelect.getIsDragging()) return;
+
       // Convert screen coords to world coords
       const cam = gameScene.cameras.main;
       const worldX = cam.scrollX + pointer.x / cam.zoom;
@@ -351,10 +551,22 @@ export class HUDScene extends Phaser.Scene {
         }
       }
 
+      const shiftKey = this.isShiftDown();
+
       if (closestEid !== null) {
-        this.entityInfoPanel?.selectEntity(closestEid, world);
+        if (shiftKey) {
+          // Toggle selection
+          if (this.selectionManager.isSelected(closestEid)) {
+            this.selectionManager.removeFromSelection(closestEid);
+          } else {
+            this.selectionManager.addToSelection(closestEid);
+          }
+        } else {
+          this.selectionManager.select(closestEid);
+        }
       } else {
-        this.entityInfoPanel?.deselect();
+        // Click on empty space without drag — deselect all
+        this.selectionManager.deselectAll();
       }
     });
   }
@@ -424,6 +636,21 @@ export class HUDScene extends Phaser.Scene {
     return gameScene.inputHandler ?? null;
   }
 
+  /** Get the GameScene as a Phaser.Scene (for input access). */
+  private getGameSceneObject(): Phaser.Scene | null {
+    const scene = this.scene.get('Game');
+    if (!scene) return null;
+    return scene as unknown as Phaser.Scene;
+  }
+
+  /** Check if Shift key is currently held. Uses GameScene keyboard. */
+  private isShiftDown(): boolean {
+    const gameScene = this.getGameSceneObject();
+    if (!gameScene || !gameScene.input.keyboard) return false;
+    const shiftKey = gameScene.input.keyboard.addKey('SHIFT');
+    return shiftKey.isDown;
+  }
+
   private handleResize(width: number, height: number): void {
     // Reposition time controls
     if (this.timeControls) {
@@ -479,6 +706,7 @@ export class HUDScene extends Phaser.Scene {
     const world = this.getECSWorld();
     const gameScene = this.scene.get('Game');
     const camera = gameScene.cameras.main;
+    const pointer = gameScene.input.activePointer;
 
     // 1. Update time controls (time display)
     if (this.timeControls) {
@@ -505,6 +733,12 @@ export class HUDScene extends Phaser.Scene {
       const fps = this.game.loop.actualFps;
       this.fpsText.setText(`FPS: ${Math.round(fps)}`);
     }
+
+    // ── Wave 8: Update selection highlights ─────────────────────────
+    this.dragSelect.updateSelectionHighlights(world, this.getSpritesMap());
+
+    // ── Wave 8: Update tooltip ──────────────────────────────────────
+    this.tooltip.update(world, pointer);
 
     // ── Wave 7: Day/Time display ─────────────────────────────────────
     this.updateDayTimeDisplay();
@@ -546,5 +780,3 @@ export class HUDScene extends Phaser.Scene {
     );
   }
 }
-
-const PANEL_WIDTH = 180;

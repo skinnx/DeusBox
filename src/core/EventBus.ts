@@ -9,6 +9,12 @@ export interface EventMap {
   'tile:changed': { tileX: number; tileY: number; fromType: string; toType: string };
   'disaster:start': { type: string; centerX: number; centerY: number; radius: number };
   'disaster:end': { type: string };
+  'relationship:changed': { entityId: number; targetId: number; value: number; type: string };
+  'storyteller:event': { type: string; data: Record<string, unknown> };
+  'entity:hover': { entityId: number; worldX: number; worldY: number };
+  'entity:click': { entityId: number; button: string };
+  'selection:changed': { selectedIds: number[] };
+  'contextmenu:action': { action: string; entityId: number; data?: Record<string, unknown> };
 }
 
 type EventCallback<T> = T extends undefined ? () => void : (data: T) => void;
