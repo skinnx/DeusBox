@@ -62,8 +62,8 @@ function triggerMigration(world: GameWorld, centerX: number, centerY: number): v
 
   for (let i = 0; i < count; i++) {
     const type = types[randInt(0, types.length - 1)] as string;
-    const x = centerX + randFloat(-clusterRadius, clusterRadius);
-    const y = centerY + randFloat(-clusterRadius, clusterRadius);
+    const x = Math.max(0, centerX + randFloat(-clusterRadius, clusterRadius));
+    const y = Math.max(0, centerY + randFloat(-clusterRadius, clusterRadius));
     spawnCreature(world, type, x, y, 0);
   }
 
@@ -230,9 +230,13 @@ function calculateDrama(world: GameWorld, state: StorytellerState, elapsed: numb
     recentCount++;
   }
   // Remove expired entries
-  while (state.recentDeaths.length > 0 && state.recentDeaths[0].time < cutoff) {
-    state.recentDeaths.shift();
+  let writeIdx = 0;
+  for (let i = 0; i < state.recentDeaths.length; i++) {
+    if (state.recentDeaths[i].time >= cutoff) {
+      state.recentDeaths[writeIdx++] = state.recentDeaths[i];
+    }
   }
+  state.recentDeaths.length = writeIdx;
   const deathDrama = Math.min(1, recentCount / 10) * WEIGHT_DEATHS;
 
   // ── Faction population imbalance ───────────────────────────────────

@@ -24,8 +24,8 @@ export class DragSelect {
   private selectionGraphics: Phaser.GameObjects.Graphics;
 
   private isDragging: boolean = false;
-  private startX: number = 0;
-  private startY: number = 0;
+  private startX: number = -1;
+  private startY: number = -1;
 
   private selectionManager: SelectionManager;
 
@@ -59,7 +59,7 @@ export class DragSelect {
    * Called from pointermove. Draws selection rectangle if dragging.
    */
   onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.startX === 0 && this.startY === 0) return;
+    if (this.startX < 0 || this.startY < 0) return;
 
     const dx = pointer.x - this.startX;
     const dy = pointer.y - this.startY;
@@ -89,14 +89,14 @@ export class DragSelect {
     if (!this.isDragging) {
       // Not a drag — single click
       this.isDragging = false;
-      this.startX = 0;
-      this.startY = 0;
+      this.startX = -1;
+      this.startY = -1;
       return false;
     }
 
     this.isDragging = false;
-    this.startX = 0;
-    this.startY = 0;
+    this.startX = -1;
+    this.startY = -1;
 
     if (!world || !sprites) return true;
 

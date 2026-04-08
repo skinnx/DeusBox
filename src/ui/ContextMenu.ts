@@ -107,28 +107,6 @@ export class ContextMenu {
   }
 
   /**
-   * Set up keyboard listeners on the GameScene (since HUD keyboard is disabled).
-   * Called from HUDScene after construction.
-   */
-  setupGameKeyboard(gameScene: Phaser.Scene): void {
-    const keyboard = gameScene.input.keyboard;
-    if (!keyboard) return;
-
-    keyboard.on('keydown-C', () => {
-      const pointer = gameScene.input.activePointer;
-      const cam = gameScene.cameras.main;
-      this.currentWorldX = cam.scrollX + pointer.x / cam.zoom;
-      this.currentWorldY = cam.scrollY + pointer.y / cam.zoom;
-      this.currentEntityId = -1;
-      this.show(pointer.x, pointer.y, EMPTY_TILE_ITEMS);
-    });
-
-    keyboard.on('keydown-ESC', () => {
-      this.hide();
-    });
-  }
-
-  /**
    * Show context menu for a specific entity or empty tile.
    * @param screenX - screen X position
    * @param screenY - screen Y position

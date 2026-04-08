@@ -72,6 +72,12 @@ export class HUDScene extends Phaser.Scene {
     // Prevent HUD from capturing game keyboard input
     this.input.keyboard!.enabled = false;
 
+    // Provide Tooltip with GameScene keyboard reference
+    const gameSceneObj = this.getGameSceneObject();
+    if (gameSceneObj) {
+      this.tooltip.initGameKeyboard(gameSceneObj);
+    }
+
     const { width, height } = this.scale;
 
     // 1. Time Controls (top-center)
@@ -316,6 +322,12 @@ export class HUDScene extends Phaser.Scene {
         this.entityInfoPanel?.deselect();
       }
     });
+  }
+
+  shutdown(): void {
+    eventBus.removeAllListeners('entity:hover');
+    eventBus.removeAllListeners('selection:changed');
+    eventBus.removeAllListeners('contextmenu:action');
   }
 
   private createSaveUI(width: number, height: number): void {

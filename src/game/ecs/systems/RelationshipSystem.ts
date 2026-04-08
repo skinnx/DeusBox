@@ -111,6 +111,27 @@ function applySentiment(world: GameWorld, eid: number, targetEid: number, delta:
 
 // ── System factory ─────────────────────────────────────────────────────────
 
+function compactRelationships(world: GameWorld): void {
+  const relEnts = query(world, [Relationship]);
+  for (const eid of relEnts) {
+    const base = eid * MAX_RELATIONSHIPS;
+    let writeIdx = 0;
+    const count = Relationship.count[eid];
+    for (let s = 0; s < count; s++) {
+      const targetEid = Relationship.target[base + s];
+      if (targetEid >= 0 && hasComponent(world, targetEid, Position)) {
+        if (writeIdx !== s) {
+          Relationship.target[base + writeIdx] = Relationship.target[base + s];
+          Relationship.value[base + writeIdx] = Relationship.value[base + s];
+          Relationship.type[base + writeIdx] = Relationship.type[base + s];
+        }
+        writeIdx++;
+      }
+    }
+    Relationship.count[eid] = writeIdx;
+  }
+}
+
 /**
  * Creates the Relationship system.
  *
@@ -122,33 +143,39 @@ function applySentiment(world: GameWorld, eid: number, targetEid: number, delta:
  * - Enemies get extended aggro range (Combat.target set early)
  */
 export function createRelationshipSystem(): (world: GameWorld, delta: number) => void {
+  let proximityCounter = 0;
+  let compactCounter = 0;
+
   return (world: GameWorld, delta: number): void => {
     const seconds = delta / 1000;
     const ents = query(world, [Position, Faction, Creature]);
 
-    // ── 1. Proximity-based relationship building ────────────────────────
-    for (let i = 0; i < ents.length; i++) {
-      const eid = ents[i];
-      if (hasComponent(world, eid, Dead)) continue;
+    // ── 1. Proximity-based relationship building (throttled) ────────────
+    proximityCounter++;
+    if (proximityCounter % 10 === 0) {
+      for (let i = 0; i < ents.length; i++) {
+        const eid = ents[i];
+        if (hasComponent(world, eid, Dead)) continue;
 
-      const ex = Position.x[eid];
-      const ey = Position.y[eid];
-      const myFaction = Faction.id[eid];
+        const ex = Position.x[eid];
+        const ey = Position.y[eid];
+        const myFaction = Faction.id[eid];
 
-      for (let j = i + 1; j < ents.length; j++) {
-        const other = ents[j];
-        if (hasComponent(world, other, Dead)) continue;
+        for (let j = i + 1; j < ents.length; j++) {
+          const other = ents[j];
+          if (hasComponent(world, other, Dead)) continue;
 
-        const dx = Position.x[other] - ex;
-        const dy = Position.y[other] - ey;
-        if (dx * dx + dy * dy > RELATIONSHIP_RANGE * RELATIONSHIP_RANGE) continue;
+          const dx = Position.x[other] - ex;
+          const dy = Position.y[other] - ey;
+          if (dx * dx + dy * dy > RELATIONSHIP_RANGE * RELATIONSHIP_RANGE) continue;
 
-        if (Faction.id[other] === myFaction) {
-          applySentiment(world, eid, other, ALLY_SENTIMENT_BOOST * seconds);
-          applySentiment(world, other, eid, ALLY_SENTIMENT_BOOST * seconds);
-        } else {
-          applySentiment(world, eid, other, -ENEMY_SENTIMENT_PENALTY * seconds);
-          applySentiment(world, other, eid, -ENEMY_SENTIMENT_PENALTY * seconds);
+          if (Faction.id[other] === myFaction) {
+            applySentiment(world, eid, other, ALLY_SENTIMENT_BOOST * seconds);
+            applySentiment(world, other, eid, ALLY_SENTIMENT_BOOST * seconds);
+          } else {
+            applySentiment(world, eid, other, -ENEMY_SENTIMENT_PENALTY * seconds);
+            applySentiment(world, other, eid, -ENEMY_SENTIMENT_PENALTY * seconds);
+          }
         }
       }
     }
@@ -159,7 +186,12 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
       const eid = combatants[i];
       if (hasComponent(world, eid, Dead)) continue;
       const targetEid = Combat.target[eid];
-      if (targetEid < 0 || hasComponent(world, targetEid, Dead)) continue;
+      if (
+        targetEid < 0 ||
+        !hasComponent(world, targetEid, Position) ||
+        hasComponent(world, targetEid, Dead)
+      )
+        continue;
 
       applySentiment(world, eid, targetEid, -COMBAT_SENTIMENT_PENALTY * seconds);
       applySentiment(world, targetEid, eid, -COMBAT_SENTIMENT_PENALTY * seconds);
@@ -182,6 +214,7 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
         if (
           friendEid < 0 ||
           hasComponent(world, friendEid, Dead) ||
+          !hasComponent(world, friendEid, Position) ||
           !hasComponent(world, friendEid, Inventory)
         ) {
           continue;
@@ -196,7 +229,7 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
         if (myFood > friendFood + 5) {
           const transfer = RESOURCE_SHARE_RATE * seconds;
           Inventory.food[eid] = Math.max(0, myFood - transfer);
-          Inventory.food[friendEid] += transfer;
+          Inventory.food[friendEid] = Math.min(999, Inventory.food[friendEid] + transfer);
         }
       }
     }
@@ -217,7 +250,12 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
         if (Relationship.type[base + s] !== 2) continue; // enemy only
 
         const enemyEid = Relationship.target[base + s];
-        if (enemyEid < 0 || hasComponent(world, enemyEid, Dead)) continue;
+        if (
+          enemyEid < 0 ||
+          !hasComponent(world, enemyEid, Position) ||
+          hasComponent(world, enemyEid, Dead)
+        )
+          continue;
 
         const dx = Position.x[enemyEid] - Position.x[eid];
         const dy = Position.y[enemyEid] - Position.y[eid];
@@ -226,6 +264,12 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
           break;
         }
       }
+    }
+
+    // ── 5. Compact relationship slots (throttled) ────────────────────────
+    compactCounter++;
+    if (compactCounter % 60 === 0) {
+      compactRelationships(world);
     }
   };
 }

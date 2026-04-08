@@ -81,10 +81,12 @@ function getTopNeed(world: GameWorld, eid: number): string {
  */
 export class Tooltip {
   private scene: Phaser.Scene;
+  private gameScene: Phaser.Scene | null = null;
   private container: Phaser.GameObjects.Container;
   private bg: Phaser.GameObjects.Rectangle;
   private border: Phaser.GameObjects.Rectangle;
   private textLines: Phaser.GameObjects.Text[] = [];
+  private textPool: Phaser.GameObjects.Text[] = [];
   private healthBarBg: Phaser.GameObjects.Graphics;
   private healthBar: Phaser.GameObjects.Graphics;
 
@@ -114,13 +116,35 @@ export class Tooltip {
 
     this.healthBar = scene.add.graphics();
     this.container.add(this.healthBar);
+
+    // Pre-allocate text pool
+    for (let i = 0; i < 15; i++) {
+      const txt = scene.add.text(0, 0, '', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#ffffff',
+        wordWrap: { width: TOOLTIP_MAX_WIDTH - 16 },
+      });
+      txt.setOrigin(0, 0);
+      txt.setVisible(false);
+      this.container.add(txt);
+      this.textPool.push(txt);
+    }
+  }
+
+  initGameKeyboard(scene: Phaser.Scene): void {
+    this.gameScene = scene;
+  }
+
+  private isShiftDown(): boolean {
+    return this.gameScene?.input.keyboard?.addKey('SHIFT')?.isDown ?? false;
   }
 
   /** Called every frame from HUDScene — tracks pointer and shift state. */
   update(world: GameWorld | null, pointer: Phaser.Input.Pointer): void {
     if (!world) return;
 
-    const showDetailed = this.scene.input.keyboard?.addKey('SHIFT')?.isDown ?? false;
+    const showDetailed = this.isShiftDown();
 
     // If already visible, update position and possibly content
     if (this.visible && this.currentEntityId !== null) {
@@ -145,7 +169,7 @@ export class Tooltip {
     this.currentEntityId = entityId;
 
     this.hoverTimer = this.scene.time.delayedCall(TOOLTIP_DELAY_MS, () => {
-      const showDetailed = this.scene.input.keyboard?.addKey('SHIFT')?.isDown ?? false;
+      const showDetailed = this.isShiftDown();
       this.show(world, entityId, pointer, showDetailed);
     });
   }
@@ -204,9 +228,9 @@ export class Tooltip {
   }
 
   private buildContent(world: GameWorld, entityId: number, detailed: boolean): void {
-    // Remove old text lines
-    for (const txt of this.textLines) {
-      txt.destroy();
+    // Hide all pooled text objects
+    for (const txt of this.textPool) {
+      txt.setVisible(false);
     }
     this.textLines = [];
 
@@ -291,16 +315,28 @@ export class Tooltip {
 
     if (lines.length === 0) return;
 
-    // Create text objects
-    for (const line of lines) {
-      const txt = this.scene.add.text(8, yOffset, line.text, {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: line.color,
-        wordWrap: { width: TOOLTIP_MAX_WIDTH - 16 },
-      });
-      txt.setOrigin(0, 0);
-      this.container.add(txt);
+    // Reuse pooled text objects
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let txt: Phaser.GameObjects.Text;
+      if (i < this.textPool.length) {
+        txt = this.textPool[i]!;
+        txt.setText(line.text);
+        txt.setColor(line.color);
+        txt.setPosition(8, yOffset);
+        txt.setVisible(true);
+      } else {
+        // Grow pool if needed
+        txt = this.scene.add.text(8, yOffset, line.text, {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: line.color,
+          wordWrap: { width: TOOLTIP_MAX_WIDTH - 16 },
+        });
+        txt.setOrigin(0, 0);
+        this.container.add(txt);
+        this.textPool.push(txt);
+      }
       this.textLines.push(txt);
       yOffset += (txt.height ?? 14) + 2;
     }

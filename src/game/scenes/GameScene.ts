@@ -86,6 +86,9 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     console.log('[GameScene] Initializing procedural world...');
 
+    // Clear systems from any previous scene lifecycle
+    this.ecsHost.clearSystems();
+
     const worldWidth = WORLD_TILES_X * TILE_SIZE;
     const worldHeight = WORLD_TILES_Y * TILE_SIZE;
 
@@ -250,6 +253,14 @@ export class GameScene extends Phaser.Scene {
     console.log('[GameScene] World ready — 256x256 tiles, procedural biomes, creatures spawned');
   }
 
+  shutdown(): void {
+    eventBus.removeAllListeners('damage:dealt');
+    eventBus.removeAllListeners('entity:spawned');
+    eventBus.removeAllListeners('disaster:start');
+    eventBus.removeAllListeners('entity:hover');
+    eventBus.removeAllListeners('entity:destroyed');
+  }
+
   update(time: number, delta: number): void {
     this.frameCount++;
 
@@ -312,6 +323,7 @@ export class GameScene extends Phaser.Scene {
   // ── Wave 8: Hover detection for tooltips ──────────────────────────
 
   private hoverFrameCounter: number = 0;
+  private lastHoveredEid: number = -1;
 
   private detectEntityHover(): void {
     // Run every 3 frames to reduce overhead
@@ -338,7 +350,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    eventBus.emit('entity:hover', { entityId: closestEid, worldX, worldY });
+    if (closestEid !== this.lastHoveredEid) {
+      this.lastHoveredEid = closestEid;
+      eventBus.emit('entity:hover', { entityId: closestEid, worldX, worldY });
+    }
   }
 
   // ── Public API for SaveManager ────────────────────────────────────────

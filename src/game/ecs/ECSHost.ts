@@ -26,6 +26,10 @@ export class ECSHost {
     this.systems.push(system);
   }
 
+  clearSystems(): void {
+    this.systems.length = 0;
+  }
+
   tick(delta: number): void {
     for (const system of this.systems) {
       system(this.world, delta);
