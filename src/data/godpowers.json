@@ -1,0 +1,96 @@
+{
+  "terraformGrass": {
+    "name": "Grass",
+    "category": "terraform",
+    "icon": "G",
+    "cooldown": 0,
+    "range": 3,
+    "color": "#27ae60"
+  },
+  "terraformDesert": {
+    "name": "Desert",
+    "category": "terraform",
+    "icon": "D",
+    "cooldown": 0,
+    "range": 3,
+    "color": "#f0b27a"
+  },
+  "terraformWater": {
+    "name": "Water",
+    "category": "terraform",
+    "icon": "W",
+    "cooldown": 0,
+    "range": 3,
+    "color": "#2e86c1"
+  },
+  "terraformMountain": {
+    "name": "Mountain",
+    "category": "terraform",
+    "icon": "M",
+    "cooldown": 0,
+    "range": 2,
+    "color": "#7f8c8d"
+  },
+  "spawnHuman": {
+    "name": "Spawn Human",
+    "category": "spawn",
+    "icon": "H",
+    "cooldown": 1000,
+    "range": 1,
+    "color": "#e74c3c"
+  },
+  "spawnAnimal": {
+    "name": "Spawn Animal",
+    "category": "spawn",
+    "icon": "A",
+    "cooldown": 500,
+    "range": 1,
+    "color": "#a0522d"
+  },
+  "fireStrike": {
+    "name": "Fire",
+    "category": "destroy",
+    "icon": "F",
+    "cooldown": 2000,
+    "range": 4,
+    "duration": 5000,
+    "color": "#e74c3c"
+  },
+  "lightningStrike": {
+    "name": "Lightning",
+    "category": "destroy",
+    "icon": "L",
+    "cooldown": 3000,
+    "range": 2,
+    "damage": 50,
+    "color": "#f1c40f"
+  },
+  "earthquake": {
+    "name": "Earthquake",
+    "category": "destroy",
+    "icon": "E",
+    "cooldown": 10000,
+    "range": 8,
+    "duration": 3000,
+    "damage": 30,
+    "color": "#7f8c8d"
+  },
+  "flood": {
+    "name": "Flood",
+    "category": "destroy",
+    "icon": "F",
+    "cooldown": 8000,
+    "range": 6,
+    "duration": 8000,
+    "color": "#2e86c1"
+  },
+  "heal": {
+    "name": "Heal",
+    "category": "create",
+    "icon": "+",
+    "cooldown": 2000,
+    "range": 3,
+    "healAmount": 50,
+    "color": "#2ecc71"
+  }
+}

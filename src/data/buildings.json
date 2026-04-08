@@ -1,0 +1,51 @@
+{
+  "house": {
+    "size": { "x": 2, "y": 2 },
+    "color": "#c0392b",
+    "cost": { "wood": 10, "stone": 5 },
+    "provides": "shelter",
+    "capacity": 4
+  },
+  "farm": {
+    "size": { "x": 3, "y": 3 },
+    "color": "#f39c12",
+    "cost": { "wood": 5 },
+    "provides": "food",
+    "productionRate": 1.0
+  },
+  "warehouse": {
+    "size": { "x": 3, "y": 2 },
+    "color": "#95a5a6",
+    "cost": { "wood": 15, "stone": 10 },
+    "provides": "storage",
+    "capacity": 500
+  },
+  "barracks": {
+    "size": { "x": 3, "y": 3 },
+    "color": "#7f8c8d",
+    "cost": { "wood": 20, "stone": 15, "iron": 5 },
+    "provides": "military",
+    "capacity": 10
+  },
+  "temple": {
+    "size": { "x": 2, "y": 3 },
+    "color": "#9b59b6",
+    "cost": { "stone": 25, "gold": 10 },
+    "provides": "worship",
+    "capacity": 20
+  },
+  "wall": {
+    "size": { "x": 1, "y": 1 },
+    "color": "#5d6d7e",
+    "cost": { "stone": 3 },
+    "provides": "defense",
+    "healthBonus": 200
+  },
+  "road": {
+    "size": { "x": 1, "y": 1 },
+    "color": "#d4a574",
+    "cost": { "stone": 1 },
+    "provides": "movement",
+    "movementBonus": 0.5
+  }
+}

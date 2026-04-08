@@ -1,0 +1,65 @@
+{
+  "ocean": {
+    "elevationRange": [0, 0.3],
+    "moistureRange": [0, 1],
+    "baseColor": "#1a5276",
+    "passable": false,
+    "movementCost": 0
+  },
+  "beach": {
+    "elevationRange": [0.3, 0.35],
+    "moistureRange": [0, 1],
+    "baseColor": "#f9e79f",
+    "passable": true,
+    "movementCost": 1
+  },
+  "plains": {
+    "elevationRange": [0.35, 0.6],
+    "moistureRange": [0, 0.4],
+    "baseColor": "#82e0aa",
+    "passable": true,
+    "movementCost": 1
+  },
+  "forest": {
+    "elevationRange": [0.35, 0.6],
+    "moistureRange": [0.4, 0.7],
+    "baseColor": "#27ae60",
+    "passable": true,
+    "movementCost": 2
+  },
+  "denseForest": {
+    "elevationRange": [0.35, 0.6],
+    "moistureRange": [0.7, 1],
+    "baseColor": "#1e8449",
+    "passable": true,
+    "movementCost": 3
+  },
+  "desert": {
+    "elevationRange": [0.6, 0.75],
+    "moistureRange": [0, 0.2],
+    "baseColor": "#f0b27a",
+    "passable": true,
+    "movementCost": 2
+  },
+  "tundra": {
+    "elevationRange": [0.6, 0.75],
+    "moistureRange": [0.2, 0.5],
+    "baseColor": "#d5dbdb",
+    "passable": true,
+    "movementCost": 2
+  },
+  "mountain": {
+    "elevationRange": [0.75, 0.9],
+    "moistureRange": [0, 1],
+    "baseColor": "#7f8c8d",
+    "passable": true,
+    "movementCost": 4
+  },
+  "snow": {
+    "elevationRange": [0.9, 1],
+    "moistureRange": [0, 1],
+    "baseColor": "#ecf0f1",
+    "passable": true,
+    "movementCost": 3
+  }
+}

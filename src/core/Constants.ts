@@ -1,0 +1,11 @@
+export const TILE_SIZE = 32;
+export const CHUNK_SIZE = 32;
+export const WORLD_TILES_X = 256;
+export const WORLD_TILES_Y = 256;
+export const MAX_ENTITIES = 10000;
+export const MAX_ZOOM = 4;
+export const MIN_ZOOM = 0.5;
+export const CAMERA_PAN_SPEED = 400;
+export const CAMERA_ZOOM_SPEED = 0.1;
+export const DEFAULT_SPEED_MULTIPLIER = 1;
+export const SPEED_MULTIPLIERS = [0, 1, 2, 4] as const;

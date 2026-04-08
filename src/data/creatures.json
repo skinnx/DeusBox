@@ -1,0 +1,51 @@
+{
+  "human": {
+    "speed": 60,
+    "maxHealth": 100,
+    "color": "#e74c3c",
+    "needs": { "hungerDecay": 0.1, "restDecay": 0.05, "socialDecay": 0.02, "funDecay": 0.03 },
+    "aiWeights": { "food": 0.9, "rest": 0.7, "social": 0.4, "fun": 0.3 }
+  },
+  "elf": {
+    "speed": 75,
+    "maxHealth": 80,
+    "color": "#2ecc71",
+    "needs": { "hungerDecay": 0.07, "restDecay": 0.04, "socialDecay": 0.04, "funDecay": 0.02 },
+    "aiWeights": { "food": 0.7, "rest": 0.5, "social": 0.6, "fun": 0.5 }
+  },
+  "dwarf": {
+    "speed": 45,
+    "maxHealth": 150,
+    "color": "#e67e22",
+    "needs": { "hungerDecay": 0.15, "restDecay": 0.03, "socialDecay": 0.03, "funDecay": 0.05 },
+    "aiWeights": { "food": 0.95, "rest": 0.4, "social": 0.3, "fun": 0.6 }
+  },
+  "orc": {
+    "speed": 55,
+    "maxHealth": 130,
+    "color": "#8e44ad",
+    "needs": { "hungerDecay": 0.2, "restDecay": 0.04, "socialDecay": 0.01, "funDecay": 0.06 },
+    "aiWeights": { "food": 0.95, "rest": 0.6, "social": 0.1, "fun": 0.5 }
+  },
+  "wolf": {
+    "speed": 90,
+    "maxHealth": 50,
+    "color": "#7f8c8d",
+    "needs": { "hungerDecay": 0.25, "restDecay": 0.08, "socialDecay": 0, "funDecay": 0 },
+    "aiWeights": { "food": 1.0, "rest": 0.8, "social": 0, "fun": 0 }
+  },
+  "deer": {
+    "speed": 85,
+    "maxHealth": 30,
+    "color": "#a0522d",
+    "needs": { "hungerDecay": 0.15, "restDecay": 0.06, "socialDecay": 0, "funDecay": 0 },
+    "aiWeights": { "food": 0.8, "rest": 0.7, "social": 0, "fun": 0 }
+  },
+  "chicken": {
+    "speed": 30,
+    "maxHealth": 10,
+    "color": "#f1c40f",
+    "needs": { "hungerDecay": 0.1, "restDecay": 0.1, "socialDecay": 0, "funDecay": 0 },
+    "aiWeights": { "food": 0.6, "rest": 0.9, "social": 0, "fun": 0 }
+  }
+}
