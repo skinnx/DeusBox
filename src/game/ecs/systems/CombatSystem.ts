@@ -4,9 +4,10 @@ import Position from '../components/Position.js';
 import Health from '../components/Health.js';
 import Faction from '../components/Faction.js';
 import Combat from '../components/Combat.js';
-import { Creature, Dead } from '../components/TagComponents.js';
+import { Dead } from '../components/TagComponents.js';
 import { destroyEntitySprite } from './RenderSyncSystem.js';
 import { eventBus } from '@/core/EventBus.js';
+import { spatialHash } from './SpatialIndexSystem.js';
 
 /** Default attack range in pixels. */
 const DEFAULT_ATTACK_RANGE = 48;
@@ -26,7 +27,6 @@ export function createCombatSystem(
 ): (world: GameWorld, delta: number) => void {
   return (world: GameWorld, delta: number): void => {
     const combatants = query(world, [Position, Combat, Health, Faction]);
-    const potentialTargets = query(world, [Position, Health, Faction]);
     const deadEntities: number[] = [];
 
     for (let i = 0; i < combatants.length; i++) {
@@ -54,10 +54,14 @@ export function createCombatSystem(
         let nearestDist = AGGRO_RANGE * AGGRO_RANGE;
         let nearestEnemy = -1;
 
-        for (let j = 0; j < potentialTargets.length; j++) {
-          const tEid = potentialTargets[j];
+        // Use spatial hash for O(1) neighbor lookup instead of O(n²)
+        const nearby = spatialHash.query(Position.x[eid], Position.y[eid], AGGRO_RANGE);
+
+        for (let j = 0; j < nearby.length; j++) {
+          const tEid = nearby[j];
           if (tEid === eid) continue;
           if (hasComponent(world, tEid, Dead)) continue;
+          if (!hasComponent(world, tEid, Health)) continue;
           if (Faction.id[tEid] === myFaction) continue;
 
           const dx = Position.x[tEid] - Position.x[eid];

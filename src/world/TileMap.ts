@@ -1,6 +1,12 @@
 import { TileType } from '@/core/Types.js';
 import { WORLD_TILES_X, WORLD_TILES_Y } from '@/core/Constants.js';
 
+/** Cached TileType values array — built once, avoids Object.values() per call. */
+const TILE_TYPES = Object.values(TileType);
+
+/** Cached TileType name → index map — built once, avoids indexOf() per call. */
+const TILE_TYPE_INDEX = new Map<string, number>(TILE_TYPES.map((t, i) => [t, i]));
+
 export class TileMap {
   readonly width: number;
   readonly height: number;
@@ -30,14 +36,17 @@ export class TileMap {
       return TileType.Void;
     }
     const value = this.tiles[this.index(x, y)];
-    return Object.values(TileType)[value] ?? TileType.Void;
+    return TILE_TYPES[value] ?? TileType.Void;
   }
 
   setTile(x: number, y: number, type: TileType): void {
     if (!this.isInBounds(x, y)) {
       return;
     }
-    this.tiles[this.index(x, y)] = Object.values(TileType).indexOf(type);
+    const idx = TILE_TYPE_INDEX.get(type);
+    if (idx !== undefined) {
+      this.tiles[this.index(x, y)] = idx;
+    }
   }
 
   getElevation(x: number, y: number): number {

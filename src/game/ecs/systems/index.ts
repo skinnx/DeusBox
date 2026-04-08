@@ -11,4 +11,5 @@ export { createReproductionSystem } from './ReproductionSystem.js';
 export { createCombatSystem } from './CombatSystem.js';
 export { createRelationshipSystem } from './RelationshipSystem.js';
 export { createStorytellerSystem } from './StorytellerSystem.js';
+export { createSpatialIndexSystem, spatialHash } from './SpatialIndexSystem.js';
 export type { StorytellerDeps } from './StorytellerSystem.js';

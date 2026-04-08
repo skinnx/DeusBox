@@ -31,8 +31,17 @@ export class SpriteGenerator {
       } else if (type === 'chicken') {
         SpriteGenerator.drawChicken(gfx, color.color);
         gfx.generateTexture(`creature_${type}`, 6, 6);
+      } else if (type === 'bear') {
+        SpriteGenerator.drawBear(gfx, color.color);
+        gfx.generateTexture(`creature_${type}`, 14, 10);
+      } else if (type === 'fish') {
+        SpriteGenerator.drawFish(gfx, color.color);
+        gfx.generateTexture(`creature_${type}`, 8, 4);
+      } else if (type === 'orc') {
+        SpriteGenerator.drawOrc(gfx, color.color);
+        gfx.generateTexture(`creature_${type}`, 10, 12);
       } else {
-        // Humanoid types: human, elf, dwarf, orc
+        // Humanoid types: human, elf, dwarf
         SpriteGenerator.drawHumanoid(gfx, color.color);
         gfx.generateTexture(`creature_${type}`, 8, 12);
       }
@@ -173,6 +182,94 @@ export class SpriteGenerator {
     gfx.fillStyle(0xff8800);
     gfx.fillRect(2, 5, 1, 1);
     gfx.fillRect(4, 5, 1, 1);
+  }
+
+  private static drawBear(gfx: Phaser.GameObjects.Graphics, color: number): void {
+    // Body (large quadruped, 10x4 core body)
+    gfx.fillStyle(color);
+    gfx.fillRect(2, 3, 10, 4);
+
+    // Head (3x3 block at front-left)
+    gfx.fillStyle(color);
+    gfx.fillRect(0, 2, 3, 3);
+
+    // Small ears (two 1x1 blocks on top of head)
+    gfx.fillStyle(color);
+    gfx.fillRect(0, 1, 1, 1);
+    gfx.fillRect(2, 1, 1, 1);
+
+    // Dark eyes (two 1x1 black pixels)
+    gfx.fillStyle(0x000000);
+    gfx.fillRect(0, 3, 1, 1);
+    gfx.fillRect(2, 3, 1, 1);
+
+    // Snout (lighter center pixel)
+    gfx.fillStyle(0x8b7355);
+    gfx.fillRect(1, 3, 1, 1);
+
+    // Legs (four thick stumps)
+    gfx.fillStyle(0x3d2e1f);
+    gfx.fillRect(2, 7, 2, 3);
+    gfx.fillRect(5, 7, 2, 3);
+    gfx.fillRect(8, 7, 2, 3);
+    gfx.fillRect(11, 7, 2, 3);
+
+    // Tail
+    gfx.fillStyle(color);
+    gfx.fillRect(12, 3, 1, 1);
+  }
+
+  private static drawFish(gfx: Phaser.GameObjects.Graphics, color: number): void {
+    // Body (6x2 core, horizontal)
+    gfx.fillStyle(color);
+    gfx.fillRect(1, 1, 6, 2);
+
+    // Head taper
+    gfx.fillStyle(color);
+    gfx.fillRect(0, 1, 1, 2);
+
+    // Tail (V-shape)
+    gfx.fillStyle(color);
+    gfx.fillRect(7, 0, 1, 1);
+    gfx.fillRect(7, 3, 1, 1);
+
+    // Eye
+    gfx.fillStyle(0x000000);
+    gfx.fillRect(1, 1, 1, 1);
+
+    // Belly highlight
+    gfx.fillStyle(0x5dade2);
+    gfx.fillRect(2, 2, 3, 1);
+  }
+
+  private static drawOrc(gfx: Phaser.GameObjects.Graphics, color: number): void {
+    // Head (4x3 — wider than normal humanoid)
+    gfx.fillStyle(color);
+    gfx.fillRect(3, 0, 4, 3);
+
+    // Eyes (two dark pixels)
+    gfx.fillStyle(0x000000);
+    gfx.fillRect(3, 1, 1, 1);
+    gfx.fillRect(6, 1, 1, 1);
+
+    // Tusks (two small white pixels below eyes)
+    gfx.fillStyle(0xffffff);
+    gfx.fillRect(3, 3, 1, 1);
+    gfx.fillRect(6, 3, 1, 1);
+
+    // Body (5x4 — wider)
+    gfx.fillStyle(color);
+    gfx.fillRect(2, 4, 6, 3);
+
+    // Legs (two 2x4 columns)
+    gfx.fillStyle(0x333333);
+    gfx.fillRect(2, 7, 2, 5);
+    gfx.fillRect(6, 7, 2, 5);
+
+    // Arms (1x3 on each side)
+    gfx.fillStyle(color);
+    gfx.fillRect(1, 4, 1, 3);
+    gfx.fillRect(8, 4, 1, 3);
   }
 
   // ── Building drawing helpers ──────────────────────────────────────

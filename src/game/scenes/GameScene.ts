@@ -21,6 +21,7 @@ import { createReproductionSystem } from '@/game/ecs/systems/ReproductionSystem.
 import { createCombatSystem } from '@/game/ecs/systems/CombatSystem.js';
 import { createRelationshipSystem } from '@/game/ecs/systems/RelationshipSystem.js';
 import { createStorytellerSystem } from '@/game/ecs/systems/StorytellerSystem.js';
+import { createSpatialIndexSystem } from '@/game/ecs/systems/SpatialIndexSystem.js';
 import { spawnCreature, entityTypes } from '@/game/ecs/factories/CreatureFactory.js';
 import { TileMap } from '@/world/TileMap.js';
 import { TerraformTool } from '@/god/TerraformTool.js';
@@ -125,7 +126,8 @@ export class GameScene extends Phaser.Scene {
 
     // ── ECS Initialization ────────────────────────────────────────────
 
-    // Register systems in order: Time → NeedsDecay → AI → Pathfinding → Movement → RenderSync
+    // Register systems in order: SpatialIndex → Time → NeedsDecay → AI → Pathfinding → Movement → RenderSync
+    this.ecsHost.registerSystem(createSpatialIndexSystem());
     this.ecsHost.registerSystem(createTimeSystem());
     this.ecsHost.registerSystem(createNeedsDecaySystem());
     this.ecsHost.registerSystem(createAISystem(tileMap));

@@ -7,6 +7,7 @@ import Inventory from '../components/Inventory.js';
 import Relationship, { MAX_RELATIONSHIPS } from '../components/Relationship.js';
 import { Creature, Dead } from '../components/TagComponents.js';
 import { eventBus } from '@/core/EventBus.js';
+import { spatialHash } from './SpatialIndexSystem.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -161,9 +162,14 @@ export function createRelationshipSystem(): (world: GameWorld, delta: number) =>
         const ey = Position.y[eid];
         const myFaction = Faction.id[eid];
 
-        for (let j = i + 1; j < ents.length; j++) {
-          const other = ents[j];
+        // Use spatial hash for O(1) neighbor lookup instead of O(n²)
+        const nearby = spatialHash.query(ex, ey, RELATIONSHIP_RANGE);
+
+        for (let j = 0; j < nearby.length; j++) {
+          const other = nearby[j];
+          if (other <= eid) continue; // avoid duplicate pairs
           if (hasComponent(world, other, Dead)) continue;
+          if (!hasComponent(world, other, Faction)) continue;
 
           const dx = Position.x[other] - ex;
           const dy = Position.y[other] - ey;
