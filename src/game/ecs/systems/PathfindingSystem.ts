@@ -24,6 +24,8 @@ export function createPathfindingSystem(
 
   // Per-entity path cache: entity ID → array of waypoints
   const pathCache = new Map<number, Array<{ x: number; y: number }>>();
+  // Per-entity last-known target: detects target changes to invalidate stale paths
+  const pathCacheTarget = new Map<number, { x: number; y: number }>();
 
   return (world: GameWorld, _delta: number): void => {
     const ents = query(world, [Position, Velocity, Pathfinder]);
@@ -45,8 +47,13 @@ export function createPathfindingSystem(
       if (speed <= 0) continue;
 
       // Check if target changed (need new path)
+      const lastTarget = pathCacheTarget.get(eid);
+      const targetChanged = !lastTarget || lastTarget.x !== tx || lastTarget.y !== ty;
       let path = pathCache.get(eid);
-      if (!path || path.length === 0) {
+      if (targetChanged || !path || path.length === 0) {
+        if (targetChanged) {
+          pathCacheTarget.set(eid, { x: tx, y: ty });
+        }
         // Compute A* path if tile map is available
         if (tileMap) {
           path = findPath(px, py, tx, ty, tileMap);

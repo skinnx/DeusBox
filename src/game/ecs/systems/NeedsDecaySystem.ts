@@ -2,6 +2,7 @@ import { query } from 'bitecs';
 import type { GameWorld } from '../ECSHost.js';
 import Needs from '../components/Needs.js';
 import AIStateComponent from '../components/AIState.js';
+import { entityTypes } from '../factories/CreatureFactory.js';
 
 /**
  * Interface matching creatures.json entries for needs decay rates.
@@ -73,17 +74,22 @@ export function createNeedsDecaySystem(): (world: GameWorld, delta: number) => v
     for (let i = 0; i < ents.length; i++) {
       const eid = ents[i];
 
+      // Look up per-creature-type decay rates, fall back to default average
+      const creatureType = entityTypes.get(eid);
+      const decay =
+        creatureType && configs[creatureType] ? configs[creatureType].needs : defaultDecay;
+
       // Hunger increases (creature gets hungrier) — capped at 100
-      Needs.hunger[eid] = Math.min(100, Needs.hunger[eid] + defaultDecay.hungerDecay * seconds);
+      Needs.hunger[eid] = Math.min(100, Needs.hunger[eid] + decay.hungerDecay * seconds);
 
       // Rest decreases (creature gets tired) — floored at 0
-      Needs.rest[eid] = Math.max(0, Needs.rest[eid] - defaultDecay.restDecay * seconds);
+      Needs.rest[eid] = Math.max(0, Needs.rest[eid] - decay.restDecay * seconds);
 
       // Social decreases — floored at 0
-      Needs.social[eid] = Math.max(0, Needs.social[eid] - defaultDecay.socialDecay * seconds);
+      Needs.social[eid] = Math.max(0, Needs.social[eid] - decay.socialDecay * seconds);
 
       // Fun decreases — floored at 0
-      Needs.fun[eid] = Math.max(0, Needs.fun[eid] - defaultDecay.funDecay * seconds);
+      Needs.fun[eid] = Math.max(0, Needs.fun[eid] - decay.funDecay * seconds);
     }
   };
 }

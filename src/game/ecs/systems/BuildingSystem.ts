@@ -8,6 +8,7 @@ import Needs from '../components/Needs.js';
 import Combat from '../components/Combat.js';
 import Health from '../components/Health.js';
 import { Humanoid, Dead } from '../components/TagComponents.js';
+import { entityTypes } from '../factories/CreatureFactory.js';
 import { TILE_SIZE } from '@/core/Constants.js';
 import { spawnBuilding } from '../factories/BuildingFactory.js';
 import type { TileMap } from '@/world/TileMap.js';
@@ -34,6 +35,19 @@ function isInventoryField(key: string): key is InventoryField {
 
 /** Building type name to index mapping. */
 const BUILDING_TYPE_LIST = Object.keys(buildingData);
+
+/** Attack power per creature type for capping barracks bonus. */
+const COMBAT_POWER: Record<string, number> = {
+  human: 10,
+  elf: 8,
+  dwarf: 15,
+  orc: 12,
+  wolf: 8,
+  bear: 15,
+  deer: 3,
+  chicken: 1,
+  fish: 1,
+};
 
 /** Build attempt interval in milliseconds. */
 const BUILD_INTERVAL = 15000;
@@ -101,9 +115,15 @@ function applyBuildingBonuses(world: GameWorld, seconds: number): void {
             break;
 
           case 'barracks':
-            // Barracks boost attack power for faction members
+            // Barracks boost attack power for faction members (capped at 2x base power)
             if (hasComponent(world, creatureEid, Combat)) {
-              Combat.attackPower[creatureEid] += 0.1 * seconds;
+              const creatureType = entityTypes.get(creatureEid);
+              const basePower = creatureType ? (COMBAT_POWER[creatureType] ?? 5) : 5;
+              const maxPower = basePower * 2;
+              Combat.attackPower[creatureEid] = Math.min(
+                maxPower,
+                Combat.attackPower[creatureEid] + 0.1 * seconds,
+              );
             }
             break;
 

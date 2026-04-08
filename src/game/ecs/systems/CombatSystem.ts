@@ -1,4 +1,4 @@
-import { query, hasComponent, addComponent } from 'bitecs';
+import { query, hasComponent, addComponent, removeEntity } from 'bitecs';
 import type { GameWorld } from '../ECSHost.js';
 import Position from '../components/Position.js';
 import Health from '../components/Health.js';
@@ -72,6 +72,8 @@ export function createCombatSystem(
 
         targetEid = nearestEnemy;
         Combat.target[eid] = targetEid;
+        // Reset attack timer when acquiring a new target
+        Combat.lastAttackTime[eid] = 0;
       }
 
       if (targetEid < 0) continue;
@@ -117,6 +119,7 @@ export function createCombatSystem(
     // ── Cleanup dead entities ────────────────────────────────────────
     for (const eid of deadEntities) {
       destroyEntitySprite(world, sprites, eid);
+      removeEntity(world, eid);
     }
   };
 }
