@@ -1,23 +1,32 @@
 import Phaser from 'phaser';
-import {
-  WORLD_TILES_X,
-  WORLD_TILES_Y,
-  TILE_SIZE,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  CAMERA_ZOOM_SPEED,
-} from '@/core/Constants.js';
+import { WORLD_TILES_X, WORLD_TILES_Y, TILE_SIZE } from '@/core/Constants.js';
 import { eventBus } from '@/core/EventBus.js';
+import { BiomeManager } from '@/world/BiomeManager.js';
+import { WorldGenerator } from '@/world/WorldGenerator.js';
+import { TilesetManager } from '@/world/TilesetManager.js';
+import { ChunkRenderer } from '@/world/ChunkRenderer.js';
+import { CameraController } from '@/game/camera/CameraController.js';
+import { ECSHost } from '@/game/ecs/ECSHost.js';
+import { createTimeSystem } from '@/game/ecs/systems/TimeSystem.js';
+import { createMovementSystem } from '@/game/ecs/systems/MovementSystem.js';
+import { createRenderSyncSystem } from '@/game/ecs/systems/RenderSyncSystem.js';
+import { spawnCreature } from '@/game/ecs/factories/CreatureFactory.js';
+import { getAllEntities } from 'bitecs';
 
 export class GameScene extends Phaser.Scene {
   private frameCount = 0;
+  private chunkRenderer: ChunkRenderer | null = null;
+  private cameraController: CameraController | null = null;
+  private ecsHost: ECSHost;
+  private sprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
 
   constructor() {
     super('Game');
+    this.ecsHost = ECSHost.getInstance();
   }
 
   create(): void {
-    console.log('[GameScene] Initializing game world...');
+    console.log('[GameScene] Initializing procedural world...');
 
     const worldWidth = WORLD_TILES_X * TILE_SIZE;
     const worldHeight = WORLD_TILES_Y * TILE_SIZE;
@@ -25,98 +34,103 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
 
-    // Camera controls
-    const cursors = this.input.keyboard!.createCursorKeys();
-    const wasd = this.input.keyboard!.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S,
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
-    });
+    // 1. Biome manager
+    const biomeManager = new BiomeManager();
 
-    this.data.set('cursors', cursors);
-    this.data.set('wasd', wasd);
+    // 2. Generate world
+    console.time('[GameScene] World generation');
+    const worldGenerator = new WorldGenerator(biomeManager);
+    const tileMap = worldGenerator.generate(42);
+    console.timeEnd('[GameScene] World generation');
 
-    // Initial camera position and zoom
-    this.cameras.main.setZoom(2);
-    this.cameras.main.centerOn(worldWidth / 2, worldHeight / 2);
+    // 3. Tileset manager
+    const tilesetManager = new TilesetManager();
 
-    // Create test grid
-    this.createTestGrid();
+    // 4. Chunk renderer
+    this.chunkRenderer = new ChunkRenderer(this, tileMap, tilesetManager);
 
-    // Camera zoom with scroll wheel
-    this.input.on(
-      'wheel',
-      (
-        _pointer: Phaser.Input.Pointer,
-        _gameObjects: Phaser.GameObjects.GameObject[],
-        _dx: number,
-        dy: number,
-      ) => {
-        const cam = this.cameras.main;
-        const newZoom = Phaser.Math.Clamp(
-          cam.zoom - dy * CAMERA_ZOOM_SPEED * 0.01,
-          MIN_ZOOM,
-          MAX_ZOOM,
-        );
-        cam.setZoom(newZoom);
-      },
-    );
+    // 5. Camera controller
+    this.cameraController = new CameraController(this);
+
+    // 6. Center camera on world
+    this.cameraController.centerOn(worldWidth / 2, worldHeight / 2);
+    this.cameraController.setZoom(2);
+
+    // Initial chunk load
+    this.chunkRenderer.update(this.cameras.main);
+
+    // ── ECS Initialization ────────────────────────────────────────────
+
+    // Register systems in order: Time → Movement → RenderSync
+    this.ecsHost.registerSystem(createTimeSystem());
+    this.ecsHost.registerSystem(createMovementSystem(worldWidth, worldHeight));
+    this.ecsHost.registerSystem(createRenderSyncSystem(this, this.sprites));
+
+    // Spawn test creatures around the center of the world
+    const cx = worldWidth / 2;
+    const cy = worldHeight / 2;
+
+    // 5 humans
+    for (let i = 0; i < 5; i++) {
+      spawnCreature(
+        this.ecsHost.world,
+        'human',
+        cx + (Math.random() - 0.5) * 400,
+        cy + (Math.random() - 0.5) * 400,
+        1,
+      );
+    }
+
+    // 3 elves
+    for (let i = 0; i < 3; i++) {
+      spawnCreature(
+        this.ecsHost.world,
+        'elf',
+        cx + (Math.random() - 0.5) * 400,
+        cy + (Math.random() - 0.5) * 400,
+        2,
+      );
+    }
+
+    // 2 wolves
+    for (let i = 0; i < 2; i++) {
+      spawnCreature(
+        this.ecsHost.world,
+        'wolf',
+        cx + (Math.random() - 0.5) * 500,
+        cy + (Math.random() - 0.5) * 500,
+        0,
+      );
+    }
+
+    const entityCount = getAllEntities(this.ecsHost.world).length;
+    console.log(`[GameScene] ECS initialized with ${entityCount} entities`);
 
     eventBus.emit('scene:change', { scene: 'Game' });
+    console.log('[GameScene] World ready — 256x256 tiles, procedural biomes, creatures spawned');
   }
 
-  update(_time: number, delta: number): void {
+  update(time: number, delta: number): void {
     this.frameCount++;
 
-    if (this.frameCount % 60 === 0) {
-      console.log(`[GameScene] Frame ${this.frameCount}, delta: ${delta.toFixed(1)}ms`);
+    if (this.frameCount % 120 === 0) {
+      const fps = this.game.loop.actualFps;
+      console.log(
+        `[GameScene] Frame ${this.frameCount} | FPS: ${fps.toFixed(0)} | Delta: ${delta.toFixed(1)}ms`,
+      );
     }
 
-    // Camera panning
-    const cursors = this.data.get('cursors') as Phaser.Types.Input.Keyboard.CursorKeys;
-    const wasd = this.data.get('wasd') as Record<string, Phaser.Input.Keyboard.Key>;
+    // Run ECS systems
+    this.ecsHost.tick(delta);
 
-    if (cursors || wasd) {
-      const cam = this.cameras.main;
-      const speed = 400 * (delta / 1000);
-      const zoom = cam.zoom;
-
-      const up = cursors.up?.isDown || wasd?.up?.isDown;
-      const down = cursors.down?.isDown || wasd?.down?.isDown;
-      const left = cursors.left?.isDown || wasd?.left?.isDown;
-      const right = cursors.right?.isDown || wasd?.right?.isDown;
-
-      if (up) cam.scrollY -= speed / zoom;
-      if (down) cam.scrollY += speed / zoom;
-      if (left) cam.scrollX -= speed / zoom;
-      if (right) cam.scrollX += speed / zoom;
+    // Update camera
+    if (this.cameraController) {
+      this.cameraController.update(time, delta);
     }
-  }
 
-  private createTestGrid(): void {
-    const gridSize = 16;
-    const offsetX = (WORLD_TILES_X / 2 - gridSize / 2) * TILE_SIZE;
-    const offsetY = (WORLD_TILES_Y / 2 - gridSize / 2) * TILE_SIZE;
-
-    const tileTypes = [
-      'tile_deepWater',
-      'tile_shallowWater',
-      'tile_sand',
-      'tile_grass',
-      'tile_forest',
-      'tile_denseForest',
-      'tile_mountain',
-      'tile_snow',
-      'tile_desert',
-      'tile_tundra',
-    ];
-
-    for (let y = 0; y < gridSize; y++) {
-      for (let x = 0; x < gridSize; x++) {
-        const tileIndex = (x + y * 3) % tileTypes.length;
-        this.add.image(offsetX + x * TILE_SIZE, offsetY + y * TILE_SIZE, tileTypes[tileIndex]);
-      }
+    // Update chunks (load/unload based on camera viewport)
+    if (this.chunkRenderer) {
+      this.chunkRenderer.update(this.cameras.main);
     }
   }
 }

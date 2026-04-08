@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SpriteGenerator } from '@/game/sprites/SpriteGenerator.js';
 
 export class PreloaderScene extends Phaser.Scene {
   constructor() {
@@ -45,7 +46,7 @@ export class PreloaderScene extends Phaser.Scene {
       gfx.clear();
     }
 
-    // Entity placeholder textures
+    // Entity placeholder textures (legacy, kept for compatibility)
     const entityColors: Record<string, number> = {
       human: 0xe74c3c,
       elf: 0x2ecc71,
@@ -65,7 +66,7 @@ export class PreloaderScene extends Phaser.Scene {
       gfx.clear();
     }
 
-    // Building placeholder textures
+    // Building placeholder textures (legacy, kept for compatibility)
     const buildingColors: Record<string, number> = {
       house: 0xc0392b,
       farm: 0xf39c12,
@@ -84,5 +85,9 @@ export class PreloaderScene extends Phaser.Scene {
     }
 
     gfx.destroy();
+
+    // Generate pixel art creature and building sprites via SpriteGenerator
+    SpriteGenerator.generateCreatureSprites(this);
+    SpriteGenerator.generateBuildingSprites(this);
   }
 }
