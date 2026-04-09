@@ -89,5 +89,6 @@ export class PreloaderScene extends Phaser.Scene {
     // Generate pixel art creature and building sprites via SpriteGenerator
     SpriteGenerator.generateCreatureSprites(this);
     SpriteGenerator.generateBuildingSprites(this);
+    SpriteGenerator.generateEquipmentOverlays(this);
   }
 }

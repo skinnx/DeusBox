@@ -6,6 +6,7 @@ import SpriteRef from '../components/SpriteRef.js';
 import Faction from '../components/Faction.js';
 import Structure from '../components/Structure.js';
 import ResourceSource from '../components/ResourceSource.js';
+import MarketInventory from '../components/MarketInventory.js';
 import { Building, Selectable, Resource } from '../components/TagComponents.js';
 import { hashTextureKey } from '../systems/RenderSyncSystem.js';
 import { resourceTypeToIndex } from '../systems/ResourceSystem.js';
@@ -29,6 +30,24 @@ type BuildingType = keyof typeof buildingData;
 
 /** Building type name list for index mapping. */
 const BUILDING_TYPE_LIST = Object.keys(buildingData);
+
+/** Building HP values by type. */
+const BUILDING_HP: Record<string, number> = {
+  wall: 200,
+  house: 100,
+  barracks: 300,
+  temple: 250,
+  farm: 80,
+  warehouse: 150,
+  road: 50,
+};
+
+/**
+ * Get the HP value for a building type. Exported for use by other systems.
+ */
+export function getBuildingHP(buildingType: string): number {
+  return BUILDING_HP[buildingType] ?? 100;
+}
 
 /**
  * Spawns a building entity with relevant components.
@@ -56,8 +75,8 @@ export function spawnBuilding(
   Position.x[eid] = x;
   Position.y[eid] = y;
 
-  // Health — buildings use healthBonus if specified, else default 200
-  const buildingHealth = config.healthBonus ?? 200;
+  // Health — use BUILDING_HP table, fallback to healthBonus or 200
+  const buildingHealth = getBuildingHP(type) || config.healthBonus || 200;
   addComponent(world, eid, Health);
   Health.current[eid] = buildingHealth;
   Health.max[eid] = buildingHealth;
@@ -91,6 +110,13 @@ export function spawnBuilding(
     ResourceSource.amount[eid] = 500;
     ResourceSource.harvestTime[eid] = 1 / (config.productionRate ?? 1);
     addComponent(world, eid, Resource);
+  }
+
+  // Marketplace: add MarketInventory for trade
+  if (config.provides === 'trade') {
+    addComponent(world, eid, MarketInventory);
+    // Seed marketplace with some starting gold
+    MarketInventory.goldReserve[eid] = 50;
   }
 
   // Fire spawn event

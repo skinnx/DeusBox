@@ -76,6 +76,35 @@ export class WorldGenerator {
           tileType = elevation < 0.2 ? TileType.DeepWater : TileType.ShallowWater;
         }
 
+        // Override: Swamp — low elevation + high moisture
+        if (elevation >= 0.15 && elevation < 0.35 && moisture >= 0.7) {
+          tileType = TileType.Swamp;
+        }
+
+        // Override: Volcanic — high elevation + very low moisture
+        if (elevation >= 0.7 && moisture < 0.3) {
+          tileType = TileType.Lava;
+        }
+
+        // Override: CoralReef — near water tiles (low elevation) + tropical moisture
+        if (elevation >= 0.2 && elevation < 0.35 && moisture >= 0.8) {
+          // Check if adjacent to water to create coastal coral
+          let nearWater = false;
+          for (let dy = -2; dy <= 2 && !nearWater; dy++) {
+            for (let dx = -2; dx <= 2 && !nearWater; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < WORLD_TILES_X && ny >= 0 && ny < WORLD_TILES_Y) {
+                const ne = tileMap.getElevation(nx, ny);
+                if (ne < 0.3) nearWater = true;
+              }
+            }
+          }
+          if (nearWater && tileType !== TileType.Swamp) {
+            tileType = TileType.Coral;
+          }
+        }
+
         tileMap.setTile(x, y, tileType);
       }
     }

@@ -10,6 +10,7 @@ import Structure from '@/game/ecs/components/Structure.js';
 import ResourceSource from '@/game/ecs/components/ResourceSource.js';
 import Reproduction from '@/game/ecs/components/Reproduction.js';
 import Inventory from '@/game/ecs/components/Inventory.js';
+import MarketInventory from '@/game/ecs/components/MarketInventory.js';
 import {
   Creature,
   Building,
@@ -82,20 +83,31 @@ function getTopNeed(world: GameWorld, eid: number): string {
 export class Tooltip {
   private scene: Phaser.Scene;
   private gameScene: Phaser.Scene | null = null;
-  private container: Phaser.GameObjects.Container;
-  private bg: Phaser.GameObjects.Rectangle;
-  private border: Phaser.GameObjects.Rectangle;
+  private container!: Phaser.GameObjects.Container;
+  private bg!: Phaser.GameObjects.Rectangle;
+  private border!: Phaser.GameObjects.Rectangle;
   private textLines: Phaser.GameObjects.Text[] = [];
   private textPool: Phaser.GameObjects.Text[] = [];
-  private healthBarBg: Phaser.GameObjects.Graphics;
-  private healthBar: Phaser.GameObjects.Graphics;
+  private healthBarBg!: Phaser.GameObjects.Graphics;
+  private healthBar!: Phaser.GameObjects.Graphics;
 
   private hoverTimer: Phaser.Time.TimerEvent | null = null;
   private currentEntityId: number | null = null;
   private visible: boolean = false;
 
+  private initialized = false;
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    // Defer all GameObject creation — scene.add is not available until boot.
+  }
+
+  /** Call from HUDScene.create() after the scene is ready. */
+  init(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    const scene = this.scene;
 
     this.container = scene.add.container(0, 0);
     this.container.setScrollFactor(0);
@@ -303,6 +315,24 @@ export class Tooltip {
         lines.push({
           text: `Faction: ${Math.floor(Faction.id[entityId])}`,
           color: '#95a5a6',
+        });
+      }
+
+      // Marketplace stock
+      if (hasComponent(world, entityId, MarketInventory)) {
+        lines.push({ text: 'Market:', color: '#e6b800' });
+        const stock = [
+          `W:${Math.floor(MarketInventory.wood[entityId])}`,
+          `F:${Math.floor(MarketInventory.food[entityId])}`,
+          `S:${Math.floor(MarketInventory.stone[entityId])}`,
+          `I:${Math.floor(MarketInventory.iron[entityId])}`,
+          `H:${Math.floor(MarketInventory.herbs[entityId])}`,
+          `C:${Math.floor(MarketInventory.crystal[entityId])}`,
+        ].join(' ');
+        lines.push({ text: `  ${stock}`, color: '#f5e6a3' });
+        lines.push({
+          text: `  Gold: ${Math.floor(MarketInventory.goldReserve[entityId])}`,
+          color: '#f1c40f',
         });
       }
     } else if (hasComponent(world, entityId, Resource)) {

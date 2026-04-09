@@ -8,10 +8,13 @@ import AIStateComponent from '@/game/ecs/components/AIState.js';
 import Faction from '@/game/ecs/components/Faction.js';
 import SpriteRef from '@/game/ecs/components/SpriteRef.js';
 import { Creature, Humanoid, Animal } from '@/game/ecs/components/TagComponents.js';
-import { AIState, NeedType } from '@/core/Types.js';
+import { AIState, NeedType, WeaponType, ArmorType, MilitaryRoleType, DiplomacyState } from '@/core/Types.js';
+import Equipment from '@/game/ecs/components/Equipment.js';
+import MilitaryRole from '@/game/ecs/components/MilitaryRole.js';
+import { getDiplomacyState } from '@/game/ecs/systems/DiplomacySystem.js';
 
 const PANEL_WIDTH = 180;
-const PANEL_HEIGHT = 260;
+const PANEL_HEIGHT = 340;
 const BAR_WIDTH = 140;
 const BAR_HEIGHT = 10;
 const BAR_GAP = 20;
@@ -70,6 +73,9 @@ export class EntityInfoPanel {
   private stateText: Phaser.GameObjects.Text;
   private factionText: Phaser.GameObjects.Text;
   private posText: Phaser.GameObjects.Text;
+  private equipText: Phaser.GameObjects.Text;
+  private militaryText: Phaser.GameObjects.Text;
+  private diplomacyText: Phaser.GameObjects.Text;
   private selectedEntityId: number | null = null;
   private _visible: boolean = false;
 
@@ -193,6 +199,30 @@ export class EntityInfoPanel {
       color: '#95a5a6',
     });
     this.container.add(this.posText);
+
+    // Equipment
+    this.equipText = scene.add.text(10, ny + 46, 'Weapon: None', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#bdc3c7',
+    });
+    this.container.add(this.equipText);
+
+    // Military role
+    this.militaryText = scene.add.text(10, ny + 58, 'Role: None (R0)', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#bdc3c7',
+    });
+    this.container.add(this.militaryText);
+
+    // Diplomacy
+    this.diplomacyText = scene.add.text(10, ny + 70, '', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#95a5a6',
+    });
+    this.container.add(this.diplomacyText);
   }
 
   selectEntity(entityId: number, world: GameWorld): void {
@@ -295,6 +325,52 @@ export class EntityInfoPanel {
     const px = Math.round(Position.x[eid]);
     const py = Math.round(Position.y[eid]);
     this.posText.setText(`Pos: ${px}, ${py}`);
+
+    // Equipment
+    if (hasComponent(world, eid, Equipment)) {
+      const weaponIdx = Math.floor(Equipment.weapon[eid]);
+      const armorIdx = Math.floor(Equipment.armor[eid]);
+      const weaponNames = Object.values(WeaponType);
+      const armorNames = Object.values(ArmorType);
+      const wName = weaponNames[weaponIdx] ?? 'None';
+      const aName = armorNames[armorIdx] ?? 'None';
+      this.equipText.setText(`W: ${wName} | A: ${aName}`);
+      this.equipText.setColor(wName !== 'None' || aName !== 'None' ? '#f39c12' : '#bdc3c7');
+    } else {
+      this.equipText.setText('W: None | A: None');
+      this.equipText.setColor('#555555');
+    }
+
+    // Military role
+    if (hasComponent(world, eid, MilitaryRole)) {
+      const roleIdx = Math.floor(MilitaryRole.role[eid]);
+      const rank = Math.floor(MilitaryRole.rank[eid]);
+      const roleNames = Object.values(MilitaryRoleType);
+      const rName = roleNames[roleIdx] ?? 'None';
+      this.militaryText.setText(`Role: ${rName} (R${rank})`);
+      this.militaryText.setColor(rName !== 'None' ? '#e74c3c' : '#bdc3c7');
+    } else {
+      this.militaryText.setText('Role: None');
+      this.militaryText.setColor('#555555');
+    }
+
+    // Diplomacy state (show for selected entity's faction vs others)
+    if (hasComponent(world, eid, Faction)) {
+      const myFaction = Math.floor(Faction.id[eid]);
+      const lines: string[] = [];
+      for (let f = 0; f <= 5; f++) {
+        if (f === myFaction) continue;
+        try {
+          const state = getDiplomacyState(myFaction, f);
+          if (state !== DiplomacyState.Neutral) {
+            lines.push(`F${f}:${state}`);
+          }
+        } catch { /* diplomacy not initialized */ }
+      }
+      this.diplomacyText.setText(lines.length > 0 ? lines.join(' ') : '');
+    } else {
+      this.diplomacyText.setText('');
+    }
   }
 
   setPosition(x: number, y: number): void {

@@ -22,6 +22,17 @@ import { createCombatSystem } from '@/game/ecs/systems/CombatSystem.js';
 import { createRelationshipSystem } from '@/game/ecs/systems/RelationshipSystem.js';
 import { createStorytellerSystem } from '@/game/ecs/systems/StorytellerSystem.js';
 import { createSpatialIndexSystem } from '@/game/ecs/systems/SpatialIndexSystem.js';
+import { createMilitarySystem } from '@/game/ecs/systems/MilitarySystem.js';
+import { createSeasonSystem } from '@/game/ecs/systems/SeasonSystem.js';
+import { createWeatherSystem } from '@/game/ecs/systems/WeatherSystem.js';
+import { createTerritorySystem } from '@/game/ecs/systems/TerritorySystem.js';
+import { createDiplomacySystem } from '@/game/ecs/systems/DiplomacySystem.js';
+import { createSiegeSystem } from '@/game/ecs/systems/SiegeSystem.js';
+import { createWarEventSystem } from '@/game/ecs/systems/WarEventSystem.js';
+import { createCraftingSystem } from '@/game/ecs/systems/CraftingSystem.js';
+import { createTradeSystem } from '@/game/ecs/systems/TradeSystem.js';
+import { createTechSystem } from '@/game/ecs/systems/TechSystem.js';
+import { createAnimationSystem } from '@/game/ecs/systems/AnimationSystem.js';
 import { spawnCreature, entityTypes } from '@/game/ecs/factories/CreatureFactory.js';
 import { TileMap } from '@/world/TileMap.js';
 import { TerraformTool } from '@/god/TerraformTool.js';
@@ -50,7 +61,7 @@ import {
   Resource,
   Dead,
 } from '@/game/ecs/components/TagComponents.js';
-import { TileType, ResourceType, AIState } from '@/core/Types.js';
+import { TileType, ResourceType, AIState, WeatherType } from '@/core/Types.js';
 import { hashTextureKey, destroyEntitySprite } from '@/game/ecs/systems/RenderSyncSystem.js';
 import { DayNightCycle } from '@/game/effects/DayNightCycle.js';
 import { ParticleSystem } from '@/game/effects/ParticleSystem.js';
@@ -133,6 +144,8 @@ export class GameScene extends Phaser.Scene {
     this.ecsHost.registerSystem(createAISystem(tileMap));
     this.ecsHost.registerSystem(createPathfindingSystem(tileMap));
     this.ecsHost.registerSystem(createMovementSystem(worldWidth, worldHeight));
+    // Wave 18: Animation updates before render
+    this.ecsHost.registerSystem(createAnimationSystem());
     this.ecsHost.registerSystem(createRenderSyncSystem(this, this.sprites));
 
     // Wave 6 systems: Resource → Faction → Relationship → Building → Reproduction → Combat → Storyteller
@@ -143,6 +156,30 @@ export class GameScene extends Phaser.Scene {
     this.ecsHost.registerSystem(createReproductionSystem(this, this.sprites));
     this.ecsHost.registerSystem(createCombatSystem(this.sprites));
     this.ecsHost.registerSystem(createStorytellerSystem({ worldWidth, worldHeight }));
+
+    // Wave 10 systems: Season → Weather
+    this.ecsHost.registerSystem(createSeasonSystem());
+    this.ecsHost.registerSystem(createWeatherSystem());
+
+    // Wave 12 systems: Territory → Diplomacy
+    this.ecsHost.registerSystem(createTerritorySystem());
+    this.ecsHost.registerSystem(createDiplomacySystem());
+
+    // Wave 13 system: Military (runs before Combat so role modifiers are applied)
+    this.ecsHost.registerSystem(createMilitarySystem());
+
+    // Wave 14 systems: Siege & War Events
+    this.ecsHost.registerSystem(createSiegeSystem(this.sprites));
+    this.ecsHost.registerSystem(createWarEventSystem());
+
+    // Wave 15 system: Crafting (auto-craft equipment near buildings)
+    this.ecsHost.registerSystem(createCraftingSystem());
+
+    // Wave 17 system: Trade (marketplace auto-trading)
+    this.ecsHost.registerSystem(createTradeSystem());
+
+    // Wave 16 system: Research (tech tree)
+    this.ecsHost.registerSystem(createTechSystem());
 
     // Spawn test creatures around the center of the world
     const cx = worldWidth / 2;
@@ -251,6 +288,37 @@ export class GameScene extends Phaser.Scene {
       this.audioManager.playDisaster();
     });
 
+    // ── Wave 10: Listen for weather changes to update particles ───────────
+    eventBus.on('weather:changed', (data) => {
+      if (!this.particleSystem) return;
+      const cam = this.cameras.main;
+      const viewX = cam.scrollX;
+      const viewY = cam.scrollY;
+      const viewW = cam.width;
+      const viewH = cam.height;
+
+      // Stop existing weather particles
+      this.particleSystem.stopSystem('rain');
+      this.particleSystem.stopSystem('snow');
+      this.particleSystem.stopSystem('storm');
+      this.particleSystem.stopSystem('fog');
+
+      switch (data.weather) {
+        case WeatherType.Rain:
+          this.particleSystem.createRain(viewX, viewY, viewW, viewH);
+          break;
+        case WeatherType.Storm:
+          this.particleSystem.createStorm(viewX, viewY, viewW, viewH);
+          break;
+        case WeatherType.Snow:
+          this.particleSystem.createSnow(viewX, viewY, viewW, viewH);
+          break;
+        case WeatherType.Fog:
+          this.particleSystem.createFog(viewX, viewY, viewW, viewH);
+          break;
+      }
+    });
+
     eventBus.emit('scene:change', { scene: 'Game' });
     console.log('[GameScene] World ready — 256x256 tiles, procedural biomes, creatures spawned');
   }
@@ -259,6 +327,13 @@ export class GameScene extends Phaser.Scene {
     eventBus.removeAllListeners('damage:dealt');
     eventBus.removeAllListeners('entity:spawned');
     eventBus.removeAllListeners('disaster:start');
+    eventBus.removeAllListeners('weather:changed');
+    eventBus.removeAllListeners('season:changed');
+    eventBus.removeAllListeners('territory:updated');
+    eventBus.removeAllListeners('diplomacy:changed');
+    eventBus.removeAllListeners('building:destroyed');
+    eventBus.removeAllListeners('research:started');
+    eventBus.removeAllListeners('research:completed');
     eventBus.removeAllListeners('entity:hover');
     eventBus.removeAllListeners('entity:destroyed');
   }
@@ -573,6 +648,18 @@ function spawnTerrainResources(
       case TileType.Mountain:
         resourceTypeIndex = resourceTypeToIndex(ResourceType.Stone);
         amount = 40 + Math.random() * 40;
+        break;
+      case TileType.Swamp:
+        resourceTypeIndex = resourceTypeToIndex(ResourceType.Herbs);
+        amount = 20 + Math.random() * 20;
+        break;
+      case TileType.Lava:
+        resourceTypeIndex = resourceTypeToIndex(ResourceType.Crystal);
+        amount = 10 + Math.random() * 15;
+        break;
+      case TileType.Coral:
+        resourceTypeIndex = resourceTypeToIndex(ResourceType.Stone);
+        amount = 25 + Math.random() * 25;
         break;
       default:
         continue;

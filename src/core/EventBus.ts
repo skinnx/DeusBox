@@ -1,3 +1,5 @@
+import type { Season, WeatherType, DiplomacyState } from './Types.js';
+
 export interface EventMap {
   'game:boot': undefined;
   'game:ready': undefined;
@@ -15,6 +17,20 @@ export interface EventMap {
   'entity:click': { entityId: number; button: string };
   'selection:changed': { selectedIds: number[] };
   'contextmenu:action': { action: string; entityId: number; data?: Record<string, unknown> };
+  'season:changed': { season: Season; previousSeason: Season };
+  'weather:changed': { weather: WeatherType; intensity: number };
+  'diplomacy:changed': { factionA: number; factionB: number; newState: DiplomacyState };
+  'territory:updated': { grid: Uint8Array };
+  'territory:claimed': { factionId: number; chunkX: number; chunkY: number };
+  'territory:lost': { factionId: number; chunkX: number; chunkY: number };
+  'building:destroyed': { entityId: number; destroyedBy?: number; buildingType?: number; siegeDuration?: number; factionId?: number };
+  'siege:start': { attackerFaction: number; targetBuilding: number };
+  'siege:end': { buildingDestroyed: boolean; factionId: number };
+  'war:declared': { attackerFaction: number; defenderFaction: number; targetX?: number; targetY?: number };
+  'war:ended': { factionA: number; factionB: number; duration: number };
+  'research:started': { factionId: number; techId: string };
+  'research:completed': { factionId: number; techId: string };
+  'trade:completed': { entityId: number; resourceType: string; amount: number };
 }
 
 type EventCallback<T> = T extends undefined ? () => void : (data: T) => void;

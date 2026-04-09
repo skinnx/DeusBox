@@ -105,6 +105,71 @@ export class ParticleSystem {
     this.activeSystems.set(`smoke_${x}_${y}`, particles);
   }
 
+  /** Storm: heavy rain with wind. */
+  createStorm(x: number, y: number, width: number, height: number): void {
+    this.stopSystem('storm');
+
+    const particles: Particle[] = [];
+    const count = Math.min(150, Math.floor((width * height) / 2000));
+    const windX = 80 + Math.random() * 60;
+
+    for (let i = 0; i < count; i++) {
+      const px = x + Math.random() * width;
+      const py = y + Math.random() * height;
+      const speed = 250 + Math.random() * 150;
+
+      const rect = this.scene.add.rectangle(px, py, 1, 4, 0x4477cc, 0.7);
+      rect.setDepth(850);
+      rect.setScrollFactor(0);
+
+      particles.push({
+        graphics: rect,
+        x: px,
+        y: py,
+        vx: windX,
+        vy: speed,
+        life: Infinity,
+        maxLife: Infinity,
+        bounds: { x, y, width, height },
+      });
+    }
+
+    this.activeSystems.set('storm', particles);
+  }
+
+  /** Fog: large semi-transparent overlays. */
+  createFog(x: number, y: number, width: number, height: number): void {
+    this.stopSystem('fog');
+
+    const particles: Particle[] = [];
+    const cols = Math.ceil(width / 120);
+    const rows = Math.ceil(height / 100);
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const px = x + c * 120 + Math.random() * 40;
+        const py = y + r * 100 + Math.random() * 30;
+
+        const rect = this.scene.add.rectangle(px, py, 130, 110, 0xcccccc, 0.15);
+        rect.setDepth(850);
+        rect.setScrollFactor(0);
+
+        particles.push({
+          graphics: rect,
+          x: px,
+          y: py,
+          vx: 5 + Math.random() * 10,
+          vy: (Math.random() - 0.5) * 3,
+          life: Infinity,
+          maxLife: Infinity,
+          bounds: { x, y, width, height },
+        });
+      }
+    }
+
+    this.activeSystems.set('fog', particles);
+  }
+
   /** Blood splatter: red particles at a point. */
   createBloodSplatter(x: number, y: number): void {
     const key = `blood_${Date.now()}`;
@@ -175,7 +240,7 @@ export class ParticleSystem {
     }
   }
 
-  private stopSystem(key: string): void {
+  stopSystem(key: string): void {
     const particles = this.activeSystems.get(key);
     if (particles) {
       for (const p of particles) {

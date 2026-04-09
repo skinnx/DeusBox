@@ -41,6 +41,10 @@ function getTerrainCost(tile: TileType): number {
     case TileType.Mountain:
     case TileType.Snow:
       return 4;
+    case TileType.Swamp:
+      return 3;
+    case TileType.Coral:
+      return 2;
     case TileType.Forest:
     case TileType.DenseForest:
       return 2;

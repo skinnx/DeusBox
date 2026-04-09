@@ -3,6 +3,7 @@ import type { GameWorld } from '../ECSHost.js';
 import Needs from '../components/Needs.js';
 import AIStateComponent from '../components/AIState.js';
 import { entityTypes } from '../factories/CreatureFactory.js';
+import { getWeatherNeedsModifier } from './WeatherSystem.js';
 
 /**
  * Interface matching creatures.json entries for needs decay rates.
@@ -69,6 +70,8 @@ const defaultDecay = getDefaultDecay();
 export function createNeedsDecaySystem(): (world: GameWorld, delta: number) => void {
   return (world: GameWorld, delta: number): void => {
     const seconds = delta / 1000;
+    const hungerMod = getWeatherNeedsModifier('hunger');
+    const restMod = getWeatherNeedsModifier('rest');
     const ents = query(world, [Needs, AIStateComponent]);
 
     for (let i = 0; i < ents.length; i++) {
@@ -80,10 +83,10 @@ export function createNeedsDecaySystem(): (world: GameWorld, delta: number) => v
         creatureType && configs[creatureType] ? configs[creatureType].needs : defaultDecay;
 
       // Hunger increases (creature gets hungrier) — capped at 100
-      Needs.hunger[eid] = Math.min(100, Needs.hunger[eid] + decay.hungerDecay * seconds);
+      Needs.hunger[eid] = Math.min(100, Needs.hunger[eid] + decay.hungerDecay * seconds * hungerMod);
 
       // Rest decreases (creature gets tired) — floored at 0
-      Needs.rest[eid] = Math.max(0, Needs.rest[eid] - decay.restDecay * seconds);
+      Needs.rest[eid] = Math.max(0, Needs.rest[eid] - decay.restDecay * seconds * restMod);
 
       // Social decreases — floored at 0
       Needs.social[eid] = Math.max(0, Needs.social[eid] - decay.socialDecay * seconds);

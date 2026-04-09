@@ -61,5 +61,26 @@
     "baseColor": "#ecf0f1",
     "passable": true,
     "movementCost": 3
+  },
+  "swamp": {
+    "elevationRange": [0.15, 0.35],
+    "moistureRange": [0.7, 1],
+    "baseColor": "#4a6741",
+    "passable": true,
+    "movementCost": 3
+  },
+  "volcanic": {
+    "elevationRange": [0.7, 1],
+    "moistureRange": [0, 0.3],
+    "baseColor": "#8b0000",
+    "passable": true,
+    "movementCost": 4
+  },
+  "coralReef": {
+    "elevationRange": [0.2, 0.35],
+    "moistureRange": [0.8, 1],
+    "baseColor": "#ff7f50",
+    "passable": true,
+    "movementCost": 2
   }
 }

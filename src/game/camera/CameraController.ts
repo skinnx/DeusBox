@@ -48,18 +48,30 @@ export class CameraController {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     }) as Record<string, Phaser.Input.Keyboard.Key>;
 
-    // Mouse wheel zoom
+    // Mouse wheel zoom — zoom toward cursor position
     scene.input.on(
       'wheel',
       (
-        _pointer: Phaser.Input.Pointer,
+        pointer: Phaser.Input.Pointer,
         _gameObjects: Phaser.GameObjects.GameObject[],
         _dx: number,
         dy: number,
       ) => {
         const cam = scene.cameras.main;
-        const newZoom = Phaser.Math.Clamp(cam.zoom - dy * 0.001, MIN_ZOOM, MAX_ZOOM);
-        cam.setZoom(newZoom);
+        const oldZoom = cam.zoom;
+        const newZoom = Phaser.Math.Clamp(oldZoom - dy * 0.001, MIN_ZOOM, MAX_ZOOM);
+
+        if (newZoom !== oldZoom) {
+          // World point under cursor before zoom
+          const worldX = cam.scrollX + pointer.x / oldZoom;
+          const worldY = cam.scrollY + pointer.y / oldZoom;
+
+          cam.setZoom(newZoom);
+
+          // Adjust scroll so the same world point stays under cursor
+          this.targetScrollX = worldX - pointer.x / newZoom;
+          this.targetScrollY = worldY - pointer.y / newZoom;
+        }
       },
     );
 

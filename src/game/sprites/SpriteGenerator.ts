@@ -15,6 +15,7 @@ export class SpriteGenerator {
     const gfx = scene.add.graphics();
 
     const creatureTypes = Object.keys(creatureData);
+    const humanoidTypes = new Set(['human', 'elf', 'dwarf', 'orc']);
 
     for (const type of creatureTypes) {
       const config = creatureData[type as keyof typeof creatureData];
@@ -38,12 +39,49 @@ export class SpriteGenerator {
         SpriteGenerator.drawFish(gfx, color.color);
         gfx.generateTexture(`creature_${type}`, 8, 4);
       } else if (type === 'orc') {
+        // Base orc texture
         SpriteGenerator.drawOrc(gfx, color.color);
         gfx.generateTexture(`creature_${type}`, 10, 12);
+
+        // Military role variants for orc
+        if ('militaryAptitude' in config && config.militaryAptitude) {
+          gfx.clear();
+          SpriteGenerator.drawOrc(gfx, color.color);
+          SpriteGenerator.drawWarriorOverlay(gfx, 10);
+          gfx.generateTexture(`creature_${type}_warrior`, 10, 12);
+
+          gfx.clear();
+          SpriteGenerator.drawOrc(gfx, color.color);
+          SpriteGenerator.drawArcherOverlay(gfx, 10);
+          gfx.generateTexture(`creature_${type}_archer`, 10, 12);
+
+          gfx.clear();
+          SpriteGenerator.drawOrc(gfx, color.color);
+          SpriteGenerator.drawMageOverlay(gfx, 10);
+          gfx.generateTexture(`creature_${type}_mage`, 10, 12);
+        }
       } else {
-        // Humanoid types: human, elf, dwarf
+        // Humanoid types: human, elf, dwarf — base texture
         SpriteGenerator.drawHumanoid(gfx, color.color);
         gfx.generateTexture(`creature_${type}`, 8, 12);
+
+        // Military role variants
+        if ('militaryAptitude' in config && config.militaryAptitude) {
+          gfx.clear();
+          SpriteGenerator.drawHumanoid(gfx, color.color);
+          SpriteGenerator.drawWarriorOverlay(gfx, 8);
+          gfx.generateTexture(`creature_${type}_warrior`, 8, 12);
+
+          gfx.clear();
+          SpriteGenerator.drawHumanoid(gfx, color.color);
+          SpriteGenerator.drawArcherOverlay(gfx, 8);
+          gfx.generateTexture(`creature_${type}_archer`, 8, 12);
+
+          gfx.clear();
+          SpriteGenerator.drawHumanoid(gfx, color.color);
+          SpriteGenerator.drawMageOverlay(gfx, 8);
+          gfx.generateTexture(`creature_${type}_mage`, 8, 12);
+        }
       }
     }
 
@@ -71,6 +109,12 @@ export class SpriteGenerator {
       } else if (type === 'road') {
         SpriteGenerator.drawRoad(gfx, color.color);
         gfx.generateTexture(`building_${type}`, 16, 16);
+      } else if (type === 'marketplace') {
+        const size = config.size;
+        const pxW = size.x * 16;
+        const pxH = size.y * 16;
+        SpriteGenerator.drawMarketplace(gfx, color.color, pxW, pxH);
+        gfx.generateTexture(`building_${type}`, pxW, pxH);
       } else {
         const size = config.size;
         const pxW = size.x * 16;
@@ -272,6 +316,93 @@ export class SpriteGenerator {
     gfx.fillRect(8, 4, 1, 3);
   }
 
+  // ── Military role overlay helpers ──────────────────────────────────
+
+  /** Warrior overlay: shield (gray square on left side) */
+  private static drawWarriorOverlay(gfx: Phaser.GameObjects.Graphics, width: number): void {
+    gfx.fillStyle(0x888888);
+    // Shield on left arm
+    gfx.fillRect(0, 3, 1, 4);
+    // Sword on right
+    gfx.fillStyle(0xcccccc);
+    gfx.fillRect(width - 1, 2, 1, 6);
+  }
+
+  /** Archer overlay: bow (curved line on right side) */
+  private static drawArcherOverlay(gfx: Phaser.GameObjects.Graphics, width: number): void {
+    gfx.fillStyle(0x8b4513);
+    // Bow on right arm
+    gfx.fillRect(width, 3, 1, 5);
+    // Bowstring
+    gfx.fillStyle(0xdddddd);
+    gfx.fillRect(width + 1, 4, 1, 3);
+  }
+
+  /** Mage overlay: staff (long pixel on right hand) */
+  private static drawMageOverlay(gfx: Phaser.GameObjects.Graphics, _width: number): void {
+    gfx.fillStyle(0x9b59b6);
+    // Staff extending from right hand upward
+    gfx.fillRect(7, 0, 1, 8);
+    // Staff orb at top
+    gfx.fillStyle(0x00ffff);
+    gfx.fillRect(6, 0, 3, 2);
+  }
+
+  // ── Equipment overlay helpers ───────────────────────────────────────
+
+  /**
+   * Generates equipment overlay textures for humanoid creatures.
+   * Textures: 'equip_sword', 'equip_bow', 'equip_staff',
+   *           'armor_leather', 'armor_chain', 'armor_plate'
+   */
+  static generateEquipmentOverlays(scene: Phaser.Scene): void {
+    const gfx = scene.add.graphics();
+
+    // Sword: bright line on right hand
+    gfx.clear();
+    gfx.fillStyle(0xcccccc);
+    gfx.fillRect(7, 1, 1, 5);
+    gfx.fillStyle(0xffffff);
+    gfx.fillRect(7, 2, 1, 3);
+    gfx.generateTexture('equip_sword', 8, 12);
+
+    // Bow: curved line on right side
+    gfx.clear();
+    gfx.fillStyle(0x8b4513);
+    gfx.fillRect(7, 2, 1, 5);
+    gfx.fillStyle(0xdddddd);
+    gfx.fillRect(8, 3, 1, 3);
+    gfx.generateTexture('equip_bow', 8, 12);
+
+    // Staff: long pixel with orb
+    gfx.clear();
+    gfx.fillStyle(0x9b59b6);
+    gfx.fillRect(7, 0, 1, 8);
+    gfx.fillStyle(0x00ffff);
+    gfx.fillRect(6, 0, 3, 2);
+    gfx.generateTexture('equip_staff', 8, 12);
+
+    // Leather armor: slightly darker body overlay
+    gfx.clear();
+    gfx.fillStyle(0x8b6914);
+    gfx.fillRect(2, 3, 4, 4);
+    gfx.generateTexture('armor_leather', 8, 12);
+
+    // Chain armor: metallic body overlay
+    gfx.clear();
+    gfx.fillStyle(0xaaaaaa);
+    gfx.fillRect(2, 3, 4, 4);
+    gfx.generateTexture('armor_chain', 8, 12);
+
+    // Plate armor: full metal body overlay
+    gfx.clear();
+    gfx.fillStyle(0xdddddd);
+    gfx.fillRect(1, 3, 6, 4);
+    gfx.generateTexture('armor_plate', 8, 12);
+
+    gfx.destroy();
+  }
+
   // ── Building drawing helpers ──────────────────────────────────────
 
   private static drawBuilding(
@@ -323,5 +454,46 @@ export class SpriteGenerator {
     gfx.fillRect(6, 2, 4, 2);
     gfx.fillRect(6, 8, 4, 2);
     gfx.fillRect(6, 14, 4, 2);
+  }
+
+  private static drawMarketplace(
+    gfx: Phaser.GameObjects.Graphics,
+    color: number,
+    w: number,
+    h: number,
+  ): void {
+    // Wooden base (light brown)
+    gfx.fillStyle(0xc4a35a);
+    gfx.fillRect(0, h * 0.3, w, h * 0.7);
+
+    // Yellow/gold awning (stall canopy)
+    gfx.fillStyle(color);
+    gfx.fillRect(0, 0, w, h * 0.35);
+
+    // Awning stripe detail
+    const darker = Phaser.Display.Color.IntegerToColor(color).darken(0.2).color;
+    gfx.fillStyle(darker);
+    for (let sx = 0; sx < w; sx += 8) {
+      gfx.fillRect(sx, 0, 4, h * 0.35);
+    }
+
+    // Counter/stall front
+    gfx.fillStyle(0x8b6914);
+    gfx.fillRect(w * 0.1, h * 0.5, w * 0.8, h * 0.15);
+
+    // Goods on display (small colored dots)
+    gfx.fillStyle(0x27ae60); // green = herbs/food
+    gfx.fillRect(w * 0.2, h * 0.55, 3, 3);
+    gfx.fillStyle(0x95a5a6); // gray = stone/iron
+    gfx.fillRect(w * 0.4, h * 0.55, 3, 3);
+    gfx.fillStyle(0xf39c12); // orange = gold
+    gfx.fillRect(w * 0.6, h * 0.55, 3, 3);
+    gfx.fillStyle(0x3498db); // blue = crystal
+    gfx.fillRect(w * 0.8, h * 0.55, 3, 3);
+
+    // Support posts
+    gfx.fillStyle(0x5d4e37);
+    gfx.fillRect(w * 0.05, h * 0.15, 3, h * 0.85);
+    gfx.fillRect(w * 0.9, h * 0.15, 3, h * 0.85);
   }
 }

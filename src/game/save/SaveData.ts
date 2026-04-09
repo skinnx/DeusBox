@@ -9,6 +9,13 @@ export interface SaveSlot {
   camera: { x: number; y: number; zoom: number };
   tiles: { data: string }; // base64-encoded Uint8Array
   entities: SavedEntity[];
+  diplomacy?: string[][]; // Diplomacy matrix for save/load
+  territory?: number[];   // Territory grid for save/load
+  tech?: {
+    unlocked: [number, string[]][];
+    active: [number, string | null][];
+    progress: [number, number][];
+  };
 }
 
 export interface SavedEntity {

@@ -4,28 +4,32 @@
     "maxHealth": 100,
     "color": "#e74c3c",
     "needs": { "hungerDecay": 0.1, "restDecay": 0.05, "socialDecay": 0.02, "funDecay": 0.03 },
-    "aiWeights": { "food": 0.9, "rest": 0.7, "social": 0.4, "fun": 0.3 }
+    "aiWeights": { "food": 0.9, "rest": 0.7, "social": 0.4, "fun": 0.3 },
+    "militaryAptitude": { "role": "warrior", "aptitude": 0.9 }
   },
   "elf": {
     "speed": 75,
     "maxHealth": 80,
     "color": "#2ecc71",
     "needs": { "hungerDecay": 0.07, "restDecay": 0.04, "socialDecay": 0.04, "funDecay": 0.02 },
-    "aiWeights": { "food": 0.7, "rest": 0.5, "social": 0.6, "fun": 0.5 }
+    "aiWeights": { "food": 0.7, "rest": 0.5, "social": 0.6, "fun": 0.5 },
+    "militaryAptitude": { "role": "archer", "aptitude": 0.8 }
   },
   "dwarf": {
     "speed": 45,
     "maxHealth": 150,
     "color": "#e67e22",
     "needs": { "hungerDecay": 0.15, "restDecay": 0.03, "socialDecay": 0.03, "funDecay": 0.05 },
-    "aiWeights": { "food": 0.95, "rest": 0.4, "social": 0.3, "fun": 0.6 }
+    "aiWeights": { "food": 0.95, "rest": 0.4, "social": 0.3, "fun": 0.6 },
+    "militaryAptitude": { "role": "warrior", "aptitude": 0.95 }
   },
   "orc": {
     "speed": 55,
     "maxHealth": 130,
     "color": "#8e44ad",
     "needs": { "hungerDecay": 0.2, "restDecay": 0.04, "socialDecay": 0.01, "funDecay": 0.06 },
-    "aiWeights": { "food": 0.95, "rest": 0.6, "social": 0.1, "fun": 0.5 }
+    "aiWeights": { "food": 0.95, "rest": 0.6, "social": 0.1, "fun": 0.5 },
+    "militaryAptitude": { "role": "warrior", "aptitude": 0.85 }
   },
   "wolf": {
     "speed": 90,

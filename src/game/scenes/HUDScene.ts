@@ -15,6 +15,9 @@ import { SelectionManager } from '@/ui/SelectionManager.js';
 import { ContextMenu } from '@/ui/ContextMenu.js';
 import { Tooltip } from '@/ui/Tooltip.js';
 import { DragSelect } from '@/ui/DragSelect.js';
+import { DamageNumbers } from '@/ui/DamageNumbers.js';
+import { NotificationSystem } from '@/ui/NotificationSystem.js';
+import { TerritoryOverlay } from '@/ui/TerritoryOverlay.js';
 import { eventBus } from '@/core/EventBus.js';
 
 const PANEL_WIDTH = 180;
@@ -57,6 +60,11 @@ export class HUDScene extends Phaser.Scene {
   // Hover tracking
   private lastHoveredEntityId: number | null = null;
 
+  // Wave 19: Visual polish UI
+  private damageNumbers: DamageNumbers | null = null;
+  private notificationSystem: NotificationSystem | null = null;
+  private territoryOverlay: TerritoryOverlay | null = null;
+
   constructor() {
     super('HUD');
     this.audioManager = AudioManager.getInstance();
@@ -78,8 +86,10 @@ export class HUDScene extends Phaser.Scene {
       this.tooltip.initGameKeyboard(gameSceneObj);
     }
 
-    // Initialize ContextMenu container (can't be done in constructor before scene is ready)
+    // Initialize ContextMenu, Tooltip & DragSelect containers (can't be done in constructor before scene is ready)
     this.contextMenu.init();
+    this.tooltip.init();
+    this.dragSelect.init();
 
     const { width, height } = this.scale;
 
@@ -159,6 +169,21 @@ export class HUDScene extends Phaser.Scene {
     this.saveNotification.setScrollFactor(0);
     this.saveNotification.setDepth(1001);
     this.saveNotification.setVisible(false);
+
+    // ── Wave 19: Damage numbers, notifications, territory overlay ────────
+    this.damageNumbers = new DamageNumbers(this);
+    this.notificationSystem = new NotificationSystem(this);
+
+    const tileMap = this.getTileMap();
+    this.territoryOverlay = new TerritoryOverlay(this, tileMap.width, tileMap.height);
+
+    // Territory toggle key 'T' on GameScene keyboard
+    const gameObjForKeys = this.getGameSceneObject();
+    if (gameObjForKeys && gameObjForKeys.input.keyboard) {
+      gameObjForKeys.input.keyboard.on('keydown-T', () => {
+        if (this.territoryOverlay) this.territoryOverlay.toggle();
+      });
+    }
 
     // Handle resize
     this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
@@ -765,6 +790,15 @@ export class HUDScene extends Phaser.Scene {
         this.saveNotification.setVisible(false);
       }
     }
+
+    // ── Wave 19: Update damage numbers & notifications ────────────────
+    if (this.damageNumbers) this.damageNumbers.update();
+    if (this.notificationSystem) this.notificationSystem.update();
+  }
+
+  /** Get the DamageNumbers instance (for external systems to spawn damage text). */
+  getDamageNumbers(): DamageNumbers | null {
+    return this.damageNumbers;
   }
 
   private updateDayTimeDisplay(): void {

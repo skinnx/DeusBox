@@ -7,11 +7,14 @@ import Faction from '../components/Faction.js';
 import Needs from '../components/Needs.js';
 import Combat from '../components/Combat.js';
 import Health from '../components/Health.js';
-import { Humanoid, Dead } from '../components/TagComponents.js';
+import { Humanoid, Dead, Building } from '../components/TagComponents.js';
 import { entityTypes } from '../factories/CreatureFactory.js';
+import { destroyEntitySprite } from './RenderSyncSystem.js';
+import { eventBus } from '@/core/EventBus.js';
 import { TILE_SIZE } from '@/core/Constants.js';
-import { spawnBuilding } from '../factories/BuildingFactory.js';
+import { spawnBuilding, getBuildingHP } from '../factories/BuildingFactory.js';
 import type { TileMap } from '@/world/TileMap.js';
+import { canBuild, hasTechModifier } from './TechSystem.js';
 
 import buildingData from '@/data/buildings.json';
 
@@ -68,6 +71,9 @@ export function createBuildingSystem(tileMap: TileMap): (world: GameWorld, delta
     // ── Apply building bonuses ──────────────────────────────────────────
     applyBuildingBonuses(world, seconds);
 
+    // ── Check for destroyed buildings ───────────────────────────────────
+    checkBuildingDestruction(world);
+
     // ── Construction (throttled) ────────────────────────────────────────
     buildTimer += delta;
     if (buildTimer < BUILD_INTERVAL) return;
@@ -75,6 +81,29 @@ export function createBuildingSystem(tileMap: TileMap): (world: GameWorld, delta
 
     attemptConstruction(world, tileMap);
   };
+}
+
+/**
+ * Check buildings with 0 HP, mark as Dead and emit event.
+ * Note: sprite cleanup is handled by RenderSyncSystem or SiegeSystem.
+ */
+function checkBuildingDestruction(world: GameWorld): void {
+  const buildings = query(world, [Structure, Health, Building]);
+
+  for (let i = 0; i < buildings.length; i++) {
+    const eid = buildings[i]!;
+    if (hasComponent(world, eid, Dead)) continue;
+    if (Health.current[eid] > 0) continue;
+
+    Health.current[eid] = 0;
+    addComponent(world, eid, Dead);
+
+    eventBus.emit('building:destroyed', {
+      entityId: eid,
+      buildingType: Structure.type[eid],
+      factionId: Structure.factionId[eid],
+    });
+  }
 }
 
 /**
@@ -108,7 +137,16 @@ function applyBuildingBonuses(world: GameWorld, seconds: number): void {
       const distSq = dx * dx + dy * dy;
 
       if (distSq < BONUS_RANGE * BONUS_RANGE) {
+        const buildingFaction = Math.floor(Faction.id[buildEid]);
+
         switch (buildingType) {
+          case 'farm':
+            // Farm: food production bonus with Agriculture tech
+            if (hasTechModifier(buildingFaction, 'farmProduction')) {
+              Needs.fun[creatureEid] = Math.min(100, Needs.fun[creatureEid] + 0.3 * seconds);
+            }
+            break;
+
           case 'house':
             // Houses reduce rest need decay — increase rest
             Needs.rest[creatureEid] = Math.min(100, Needs.rest[creatureEid] + 0.5 * seconds);
@@ -151,7 +189,9 @@ function attemptConstruction(world: GameWorld, _tileMap: TileMap): void {
     if (hasComponent(world, eid, Dead)) continue;
 
     // Try to find an affordable building
+    const factionId = Math.floor(Faction.id[eid]);
     for (const [buildingType, config] of Object.entries(configs)) {
+      if (!canBuild(factionId, buildingType)) continue;
       if (canAfford(Inventory, eid, config.cost)) {
         // Deduct resources
         deductResources(Inventory, eid, config.cost);

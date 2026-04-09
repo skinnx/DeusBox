@@ -9,8 +9,8 @@ import { ResourceType } from '@/core/Types.js';
 
 /**
  * Maps ResourceType enum index to Inventory field name.
- * Object.values(ResourceType) = ['Wood', 'Stone', 'Food', 'Gold', 'Iron']
- * Indices: 0=Wood, 1=Stone, 2=Food, 3=Gold, 4=Iron
+ * Object.values(ResourceType) = ['Wood', 'Stone', 'Food', 'Gold', 'Iron', 'Herbs', 'Crystal']
+ * Indices: 0=Wood, 1=Stone, 2=Food, 3=Gold, 4=Iron, 5=Herbs, 6=Crystal
  */
 const RESOURCE_INDEX_TO_FIELD: (keyof typeof Inventory)[] = [
   'wood',
@@ -18,6 +18,8 @@ const RESOURCE_INDEX_TO_FIELD: (keyof typeof Inventory)[] = [
   'food',
   'gold',
   'iron',
+  'herbs',
+  'crystal',
 ];
 
 /** Maximum amount a single Inventory field can hold. */

@@ -20,8 +20,8 @@ const DRAG_THRESHOLD = 4;
  */
 export class DragSelect {
   private scene: Phaser.Scene;
-  private graphics: Phaser.GameObjects.Graphics;
-  private selectionGraphics: Phaser.GameObjects.Graphics;
+  private graphics!: Phaser.GameObjects.Graphics;
+  private selectionGraphics!: Phaser.GameObjects.Graphics;
 
   private isDragging: boolean = false;
   private startX: number = -1;
@@ -29,17 +29,26 @@ export class DragSelect {
 
   private selectionManager: SelectionManager;
 
+  private initialized = false;
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.selectionManager = SelectionManager.getInstance();
+    // Defer all GameObject creation — scene.add is not available until boot.
+  }
+
+  /** Call from HUDScene.create() after the scene is ready. */
+  init(): void {
+    if (this.initialized) return;
+    this.initialized = true;
 
     // Drag box graphics (screen-space)
-    this.graphics = scene.add.graphics();
+    this.graphics = this.scene.add.graphics();
     this.graphics.setScrollFactor(0);
     this.graphics.setDepth(2500);
 
     // Selection highlight graphics (world-space)
-    this.selectionGraphics = scene.add.graphics();
+    this.selectionGraphics = this.scene.add.graphics();
     this.selectionGraphics.setDepth(1500);
   }
 
@@ -94,6 +103,10 @@ export class DragSelect {
       return false;
     }
 
+    // Save start position before resetting
+    const savedStartX = this.startX;
+    const savedStartY = this.startY;
+
     this.isDragging = false;
     this.startX = -1;
     this.startY = -1;
@@ -108,13 +121,13 @@ export class DragSelect {
 
     // Convert screen box corners to world coordinates
     const worldTL = this.screenToWorld(
-      Math.min(this.startX, endX),
-      Math.min(this.startY, endY),
+      Math.min(savedStartX, endX),
+      Math.min(savedStartY, endY),
       cam,
     );
     const worldBR = this.screenToWorld(
-      Math.max(this.startX, endX),
-      Math.max(this.startY, endY),
+      Math.max(savedStartX, endX),
+      Math.max(savedStartY, endY),
       cam,
     );
 

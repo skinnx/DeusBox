@@ -23,7 +23,10 @@ export class BiomeManager {
     this.biomeOrder = [
       'snow',
       'mountain',
+      'volcanic',
       'denseForest',
+      'swamp',
+      'coralReef',
       'forest',
       'desert',
       'tundra',
@@ -82,6 +85,10 @@ export class BiomeManager {
         return TileType.Mountain;
       case BiomeType.Volcanic:
         return TileType.Lava;
+      case BiomeType.Swamp:
+        return TileType.Swamp;
+      case BiomeType.CoralReef:
+        return TileType.Coral;
       default:
         return TileType.Grass;
     }
@@ -110,6 +117,9 @@ export class BiomeManager {
       tundra: BiomeType.Tundra,
       mountain: BiomeType.Mountain,
       snow: BiomeType.Mountain, // snow biome maps to Mountain biome type
+      swamp: BiomeType.Swamp,
+      volcanic: BiomeType.Volcanic,
+      coralReef: BiomeType.CoralReef,
     };
     return map[key] ?? BiomeType.Ocean;
   }
@@ -124,7 +134,9 @@ export class BiomeManager {
       [BiomeType.Desert]: 'desert',
       [BiomeType.Tundra]: 'tundra',
       [BiomeType.Mountain]: 'mountain',
-      [BiomeType.Volcanic]: 'ocean', // no volcanic in json, fallback
+      [BiomeType.Volcanic]: 'volcanic',
+      [BiomeType.Swamp]: 'swamp',
+      [BiomeType.CoralReef]: 'coralReef',
     };
     return map[biome] ?? 'ocean';
   }

@@ -1,5 +1,6 @@
 import type { GameWorld } from '@/game/ecs/ECSHost.js';
 import type { TileMap } from '@/world/TileMap.js';
+import { hasComponent, query as bitecsQuery } from 'bitecs';
 import { NodeStatus } from '@/ai/NodeStatus.js';
 import { AIState } from '@/core/Types.js';
 import { TILE_SIZE, WORLD_TILES_X, WORLD_TILES_Y } from '@/core/Constants.js';
@@ -9,6 +10,10 @@ import Needs from '@/game/ecs/components/Needs.js';
 import AIStateComponent from '@/game/ecs/components/AIState.js';
 import Pathfinder from '@/game/ecs/components/Pathfinder.js';
 import Health from '@/game/ecs/components/Health.js';
+import Inventory from '@/game/ecs/components/Inventory.js';
+import MarketInventory from '@/game/ecs/components/MarketInventory.js';
+import Structure from '@/game/ecs/components/Structure.js';
+import { Humanoid } from '@/game/ecs/components/TagComponents.js';
 import { TileType } from '@/core/Types.js';
 import { findPath } from '@/utils/Pathfinding.js';
 
@@ -255,37 +260,146 @@ export function fleeAction(eid: number, _ctx: unknown): NodeStatus {
   return NodeStatus.Running;
 }
 
-// ── Condition helpers ──────────────────────────────────────────────
+/**
+ * Trade action: if inventory is full, pathfind to nearest marketplace.
+ * The actual trade happens in TradeSystem when near the marketplace.
+ */
+export function tradeAction(eid: number, ctx: unknown): NodeStatus {
+  const context = ctx as AIContext;
+  if (!hasComponent(context.world, eid, Inventory)) return NodeStatus.Failure;
+
+  const px = Position.x[eid];
+  const py = Position.y[eid];
+
+  // Check if near a marketplace (within trade range) — trade happens via TradeSystem
+  const markets = queryMarkets(context.world);
+  for (const marketEid of markets) {
+    const dx = Position.x[marketEid] - px;
+    const dy = Position.y[marketEid] - py;
+    if (dx * dx + dy * dy < (TILE_SIZE * 4) * (TILE_SIZE * 4)) {
+      // At marketplace — TradeSystem handles the actual trade
+      Velocity.x[eid] = 0;
+      Velocity.y[eid] = 0;
+      AIStateComponent.state[eid] = AIState.Working as unknown as number;
+      return NodeStatus.Success;
+    }
+  }
+
+  // Find nearest marketplace and pathfind toward it
+  if (markets.length > 0) {
+    let nearestDist = Infinity;
+    let nearestMarket = markets[0]!;
+    for (const mEid of markets) {
+      const dx = Position.x[mEid] - px;
+      const dy = Position.y[mEid] - py;
+      const d = dx * dx + dy * dy;
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestMarket = mEid;
+      }
+    }
+
+    Pathfinder.targetX[eid] = Position.x[nearestMarket];
+    Pathfinder.targetY[eid] = Position.y[nearestMarket];
+    Pathfinder.pathIndex[eid] = 0;
+    AIStateComponent.state[eid] = AIState.Seeking as unknown as number;
+    setVelocityToward(eid, px, py, Position.x[nearestMarket], Position.y[nearestMarket]);
+    return NodeStatus.Running;
+  }
+
+  return NodeStatus.Failure;
+}
+
+/**
+ * Buy action: if hungry and has gold, pathfind to nearest marketplace to buy food.
+ * The actual purchase happens in TradeSystem when near the marketplace.
+ */
+export function buyAction(eid: number, ctx: unknown): NodeStatus {
+  const context = ctx as AIContext;
+  if (!hasComponent(context.world, eid, Inventory)) return NodeStatus.Failure;
+  if (Inventory.gold[eid] <= 0) return NodeStatus.Failure;
+
+  // Same logic as tradeAction — navigate to marketplace
+  const px = Position.x[eid];
+  const py = Position.y[eid];
+
+  const markets = queryMarkets(context.world);
+  for (const marketEid of markets) {
+    const dx = Position.x[marketEid] - px;
+    const dy = Position.y[marketEid] - py;
+    if (dx * dx + dy * dy < (TILE_SIZE * 4) * (TILE_SIZE * 4)) {
+      Velocity.x[eid] = 0;
+      Velocity.y[eid] = 0;
+      AIStateComponent.state[eid] = AIState.Working as unknown as number;
+      return NodeStatus.Success;
+    }
+  }
+
+  if (markets.length > 0) {
+    let nearestDist = Infinity;
+    let nearestMarket = markets[0]!;
+    for (const mEid of markets) {
+      const dx = Position.x[mEid] - px;
+      const dy = Position.y[mEid] - py;
+      const d = dx * dx + dy * dy;
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestMarket = mEid;
+      }
+    }
+
+    Pathfinder.targetX[eid] = Position.x[nearestMarket];
+    Pathfinder.targetY[eid] = Position.y[nearestMarket];
+    Pathfinder.pathIndex[eid] = 0;
+    AIStateComponent.state[eid] = AIState.Seeking as unknown as number;
+    setVelocityToward(eid, px, py, Position.x[nearestMarket], Position.y[nearestMarket]);
+    return NodeStatus.Running;
+  }
+
+  return NodeStatus.Failure;
+}
+
+/** Query world for marketplace entities. */
+function queryMarkets(world: GameWorld): number[] {
+  const markets: number[] = [];
+  const ents = bitecsQuery(world, [Position, MarketInventory, Structure]);
+  for (let i = 0; i < ents.length; i++) {
+    markets.push(ents[i]!);
+  }
+  return markets;
+}
 
 export function isHealthLow(eid: number, _ctx: unknown): boolean {
   return Health.current[eid] / Health.max[eid] < 0.3;
 }
 
 export function isHungry(eid: number, _ctx: unknown): boolean {
-  // Hunger starts at 100 (full) and decays toward 0 (starving)
-  // But in the task spec: "hunger > 80 → seek food"
-  // This means hunger INCREASES as the creature gets hungrier
-  // Wait — needs start at 100 (fully satisfied). Decay reduces them.
-  // hunger > 80 means the creature is still fairly full...
-  // Actually the task says "hunger > 80 → seek food" which is counterintuitive.
-  // Let me re-read: "hunger increases (gets hungrier)" in NeedsDecaySystem.
-  // So hunger starts low and increases. Higher = hungrier.
   return Needs.hunger[eid] > 80;
 }
 
 export function isTired(eid: number, _ctx: unknown): boolean {
-  // "rest < 20 → rest" — rest decreases as creature gets tired
   return Needs.rest[eid] < 20;
 }
 
 export function isLonely(eid: number, _ctx: unknown): boolean {
-  // "social < 40 → socialize"
   return Needs.social[eid] < 40;
 }
 
 export function isBored(eid: number, _ctx: unknown): boolean {
-  // "fun < 30 → wander"
   return Needs.fun[eid] < 30;
+}
+
+export function isInventoryFull(eid: number, _ctx: unknown): boolean {
+  if (!hasComponent((_ctx as AIContext).world, eid, Inventory)) return false;
+  let total = 0;
+  const fields: (keyof typeof Inventory)[] = ['wood', 'food', 'stone', 'gold', 'iron', 'herbs', 'crystal'];
+  for (const f of fields) total += Inventory[f][eid];
+  return total > 160; // 80% of 200
+}
+
+export function needsFoodFromMarket(eid: number, _ctx: unknown): boolean {
+  if (!hasComponent((_ctx as AIContext).world, eid, Inventory)) return false;
+  return Needs.hunger[eid] > 60 && Inventory.gold[eid] > 0;
 }
 
 // ── Utility ────────────────────────────────────────────────────────

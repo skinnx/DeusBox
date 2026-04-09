@@ -1,0 +1,58 @@
+{
+  "BasicTools": {
+    "tier": 1,
+    "cost": 100,
+    "researchTime": 60,
+    "requires": null,
+    "unlocks": { "equipment": ["sword", "chain_armor"] }
+  },
+  "Agriculture": {
+    "tier": 1,
+    "cost": 100,
+    "researchTime": 60,
+    "requires": null,
+    "unlocks": { "buildings": ["farm"], "modifier": "farmProduction" }
+  },
+  "Marketplace": {
+    "tier": 2,
+    "cost": 300,
+    "researchTime": 120,
+    "requires": ["Agriculture"],
+    "unlocks": { "buildings": ["marketplace"] }
+  },
+  "AdvancedWeapons": {
+    "tier": 2,
+    "cost": 300,
+    "researchTime": 120,
+    "requires": ["BasicTools"],
+    "unlocks": { "equipment": ["bow"] }
+  },
+  "Fortification": {
+    "tier": 2,
+    "cost": 300,
+    "researchTime": 120,
+    "requires": null,
+    "unlocks": { "modifier": "wallHealth" }
+  },
+  "Arcane": {
+    "tier": 3,
+    "cost": 600,
+    "researchTime": 180,
+    "requires": ["BasicTools"],
+    "unlocks": { "roles": ["mage"] }
+  },
+  "SiegeWarfare": {
+    "tier": 3,
+    "cost": 600,
+    "researchTime": 180,
+    "requires": ["AdvancedWeapons", "Fortification"],
+    "unlocks": { "modifier": "siegeDamage" }
+  },
+  "AdvancedArmor": {
+    "tier": 3,
+    "cost": 600,
+    "researchTime": 180,
+    "requires": ["AdvancedWeapons"],
+    "unlocks": { "equipment": ["plate_armor"] }
+  }
+}

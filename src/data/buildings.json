@@ -47,5 +47,12 @@
     "cost": { "stone": 1 },
     "provides": "movement",
     "movementBonus": 0.5
+  },
+  "marketplace": {
+    "size": { "x": 3, "y": 3 },
+    "color": "#f1c40f",
+    "cost": { "wood": 20, "stone": 10, "gold": 5 },
+    "provides": "trade",
+    "capacity": 10
   }
 }

@@ -11,6 +11,8 @@ const TILE_COLORS: Record<string, number> = {
   [TileType.Snow]: 0xecf0f1,
   [TileType.Desert]: 0xf0b27a,
   [TileType.Tundra]: 0xd5dbdb,
+  [TileType.Swamp]: 0x4a6741,
+  [TileType.Coral]: 0xff7f50,
   [TileType.Lava]: 0xe74c3c,
   [TileType.Void]: 0x000000,
 };

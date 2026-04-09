@@ -14,6 +14,8 @@ export enum TileType {
   Snow = 'Snow',
   Desert = 'Desert',
   Tundra = 'Tundra',
+  Swamp = 'Swamp',
+  Coral = 'Coral',
   Lava = 'Lava',
   Void = 'Void',
 }
@@ -28,6 +30,8 @@ export enum BiomeType {
   Tundra = 'Tundra',
   Mountain = 'Mountain',
   Volcanic = 'Volcanic',
+  Swamp = 'Swamp',
+  CoralReef = 'CoralReef',
 }
 
 export enum Direction {
@@ -61,6 +65,7 @@ export enum BuildingType {
   Temple = 'Temple',
   Wall = 'Wall',
   Road = 'Road',
+  Marketplace = 'Marketplace',
 }
 
 export enum ResourceType {
@@ -69,6 +74,8 @@ export enum ResourceType {
   Food = 'Food',
   Gold = 'Gold',
   Iron = 'Iron',
+  Herbs = 'Herbs',
+  Crystal = 'Crystal',
 }
 
 export enum GodPowerType {
@@ -105,4 +112,58 @@ export enum AIState {
   Dead = 'Dead',
 }
 
+export enum MilitaryRoleType {
+  None = 'None',
+  Warrior = 'Warrior',
+  Archer = 'Archer',
+  Mage = 'Mage',
+}
+
+export enum Season {
+  Spring = 'Spring',
+  Summer = 'Summer',
+  Autumn = 'Autumn',
+  Winter = 'Winter',
+}
+
+export enum WeatherType {
+  Clear = 'Clear',
+  Rain = 'Rain',
+  Storm = 'Storm',
+  Fog = 'Fog',
+  Snow = 'Snow',
+}
+
 export type FactionID = number;
+
+export enum DiplomacyState {
+  Neutral = 'Neutral',
+  Allied = 'Allied',
+  AtWar = 'AtWar',
+  Ceasefire = 'Ceasefire',
+}
+
+export enum WeaponType {
+  None = 'None',
+  Sword = 'Sword',
+  Bow = 'Bow',
+  Staff = 'Staff',
+}
+
+export enum ArmorType {
+  None = 'None',
+  Leather = 'Leather',
+  Chain = 'Chain',
+  Plate = 'Plate',
+}
+
+export enum TechType {
+  BasicTools = 'BasicTools',
+  Agriculture = 'Agriculture',
+  AdvancedWeapons = 'AdvancedWeapons',
+  Fortification = 'Fortification',
+  Arcane = 'Arcane',
+  SiegeWarfare = 'SiegeWarfare',
+  Marketplace = 'Marketplace',
+  AdvancedArmor = 'AdvancedArmor',
+}

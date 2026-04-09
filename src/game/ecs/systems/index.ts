@@ -5,7 +5,7 @@ export { createAISystem } from './AISystem.js';
 export { createNeedsDecaySystem } from './NeedsDecaySystem.js';
 export { createPathfindingSystem } from './PathfindingSystem.js';
 export { createResourceSystem, resourceTypeToIndex } from './ResourceSystem.js';
-export { createFactionSystem, areFactionsHostile } from './FactionSystem.js';
+export { createFactionSystem } from './FactionSystem.js';
 export { createBuildingSystem } from './BuildingSystem.js';
 export { createReproductionSystem } from './ReproductionSystem.js';
 export { createCombatSystem } from './CombatSystem.js';

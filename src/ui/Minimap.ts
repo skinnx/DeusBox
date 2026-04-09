@@ -7,6 +7,7 @@ import Position from '@/game/ecs/components/Position.js';
 import Faction from '@/game/ecs/components/Faction.js';
 import { Creature } from '@/game/ecs/components/TagComponents.js';
 import type { TileMap } from '@/world/TileMap.js';
+import { eventBus } from '@/core/EventBus.js';
 
 const TILE_COLORS: Record<string, number> = {
   [TileType.DeepWater]: 0x1a3a5c,
@@ -19,6 +20,8 @@ const TILE_COLORS: Record<string, number> = {
   [TileType.Snow]: 0xecf0f1,
   [TileType.Desert]: 0xf0b27a,
   [TileType.Tundra]: 0xbdc3c7,
+  [TileType.Swamp]: 0x4a6741,
+  [TileType.Coral]: 0xff7f50,
   [TileType.Lava]: 0xe74c3c,
   [TileType.Void]: 0x1a1a2e,
 };
@@ -40,6 +43,8 @@ export class Minimap {
   private tileMap: TileMap;
   private textureKey: string;
   private dirty: boolean = true;
+  private territoryGrid: Uint8Array | null = null;
+  private territoryDots: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, tileMap: TileMap, x: number, y: number, size: number) {
     this.scene = scene;
@@ -89,6 +94,16 @@ export class Minimap {
       const localX = pointer.x - this.background.x;
       const localY = pointer.y - this.background.y;
       this.navigateTo(localX, localY);
+    });
+
+    // Territory overlay dots
+    this.territoryDots = scene.add.graphics();
+    this.territoryDots.setPosition(2, 2);
+    this.container.add(this.territoryDots);
+
+    // Listen for territory updates
+    eventBus.on('territory:updated', (data: { grid: Uint8Array }) => {
+      this.territoryGrid = data.grid;
     });
   }
 
@@ -157,6 +172,26 @@ export class Minimap {
     const vpH = vpWorldH * this.scaleRatio;
 
     this.viewportRect.strokeRect(vpX, vpY, vpW, vpH);
+
+    // Draw territory overlay (faction colored dots)
+    this.territoryDots.clear();
+    if (this.territoryGrid) {
+      // Sample every 4th tile for performance
+      const step = 4;
+      for (let y = 0; y < this.worldHeight; y += step) {
+        for (let x = 0; x < this.worldWidth; x += step) {
+          const factionId = this.territoryGrid[y * this.worldWidth + x];
+          if (factionId > 0) {
+            const color = FACTION_COLORS[factionId % FACTION_COLORS.length] ?? 0xffffff;
+            this.territoryDots.fillStyle(color, 0.3);
+            const dx = x * this.scaleRatio;
+            const dy = y * this.scaleRatio;
+            const size = step * this.scaleRatio;
+            this.territoryDots.fillRect(dx, dy, size, size);
+          }
+        }
+      }
+    }
 
     // Draw creature dots
     this.creatureDots.clear();

@@ -11,7 +11,10 @@ export { default as Inventory } from './Inventory.js';
 export { default as Structure } from './Structure.js';
 export { default as Reproduction } from './Reproduction.js';
 export { default as Combat } from './Combat.js';
+export { default as Weather } from './Weather.js';
 export { default as Relationship } from './Relationship.js';
+export { default as Equipment } from './Equipment.js';
+export { default as MarketInventory } from './MarketInventory.js';
 export {
   Creature,
   Building,

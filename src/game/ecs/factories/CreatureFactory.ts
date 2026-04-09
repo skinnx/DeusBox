@@ -12,6 +12,9 @@ import Pathfinder from '../components/Pathfinder.js';
 import Combat from '../components/Combat.js';
 import Reproduction from '../components/Reproduction.js';
 import Inventory from '../components/Inventory.js';
+import Equipment from '../components/Equipment.js';
+import MilitaryRole from '../components/MilitaryRole.js';
+import AnimationState from '../components/AnimationState.js';
 import { Creature, Selectable, Humanoid, Animal } from '../components/TagComponents.js';
 import { hashTextureKey } from '../systems/RenderSyncSystem.js';
 import { eventBus } from '@/core/EventBus.js';
@@ -60,6 +63,10 @@ interface CreatureConfig {
     rest: number;
     social: number;
     fun: number;
+  };
+  militaryAptitude?: {
+    role: string;
+    aptitude: number;
   };
 }
 
@@ -124,6 +131,14 @@ export function spawnCreature(
   AIStateComponent.job[eid] = 0;
   AIStateComponent.timer[eid] = 0;
 
+  // Animation state (idle, facing down by default)
+  addComponent(world, eid, AnimationState);
+  AnimationState.state[eid] = 0;
+  AnimationState.direction[eid] = 0;
+  AnimationState.frameTimer[eid] = 0;
+  AnimationState.frame[eid] = 0;
+  AnimationState.deathProgress[eid] = 0;
+
   // Faction
   addComponent(world, eid, Faction);
   Faction.id[eid] = factionId;
@@ -142,6 +157,14 @@ export function spawnCreature(
 
   if (HUMANOID_TYPES.has(type)) {
     addComponent(world, eid, Humanoid);
+
+    // MilitaryRole — assign based on creature config
+    addComponent(world, eid, MilitaryRole);
+    MilitaryRole.role[eid] = 0; // Default: no role (assigned later by MilitarySystem)
+    MilitaryRole.rank[eid] = 0;
+    MilitaryRole.formationX[eid] = 0;
+    MilitaryRole.formationY[eid] = 0;
+    MilitaryRole.combatTime[eid] = 0;
   } else if (ANIMAL_TYPES.has(type)) {
     addComponent(world, eid, Animal);
   }
@@ -173,6 +196,9 @@ export function spawnCreature(
     Inventory.stone[eid] = 0;
     Inventory.gold[eid] = 0;
     Inventory.iron[eid] = 0;
+
+    // Equipment component (default: no weapon, no armor, no accessory)
+    addComponent(world, eid, Equipment);
   }
 
   // Track entity type for reproduction

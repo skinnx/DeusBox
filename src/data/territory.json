@@ -1,0 +1,11 @@
+{
+  "chunkSize": 8,
+  "claimThreshold": 3,
+  "decayRate": 0.5,
+  "claimRate": 2.0,
+  "tickInterval": 30,
+  "warReputationThreshold": 20,
+  "allyReputationThreshold": 70,
+  "warDecayPerSecond": 0.3,
+  "allyBoostPerSecond": 0.2
+}

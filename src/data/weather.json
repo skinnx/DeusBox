@@ -1,0 +1,66 @@
+{
+  "seasonDuration": 75000,
+  "weatherInterval": { "min": 20000, "max": 40000 },
+  "seasons": {
+    "Spring": {
+      "clear": 0.4,
+      "rain": 0.4,
+      "storm": 0.1,
+      "fog": 0.1,
+      "snow": 0.0
+    },
+    "Summer": {
+      "clear": 0.7,
+      "rain": 0.1,
+      "storm": 0.2,
+      "fog": 0.0,
+      "snow": 0.0
+    },
+    "Autumn": {
+      "clear": 0.4,
+      "rain": 0.2,
+      "storm": 0.0,
+      "fog": 0.4,
+      "snow": 0.0
+    },
+    "Winter": {
+      "clear": 0.4,
+      "rain": 0.0,
+      "storm": 0.2,
+      "fog": 0.1,
+      "snow": 0.3
+    }
+  },
+  "effects": {
+    "movement": {
+      "clear": 1.0,
+      "rain": 0.8,
+      "storm": 0.5,
+      "fog": 0.9,
+      "snow": 0.7
+    },
+    "needs": {
+      "hunger": {
+        "clear": 1.0,
+        "rain": 1.5,
+        "storm": 2.0,
+        "fog": 1.0,
+        "snow": 1.2
+      },
+      "rest": {
+        "clear": 1.0,
+        "rain": 1.0,
+        "storm": 1.2,
+        "fog": 1.0,
+        "snow": 1.5
+      }
+    },
+    "aggro": {
+      "clear": 1.0,
+      "rain": 0.9,
+      "storm": 0.7,
+      "fog": 0.5,
+      "snow": 0.8
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sword": { "inputs": { "iron": 3, "wood": 2 }, "outputType": "weapon", "outputId": 1, "craftTime": 8 },
+  "bow": { "inputs": { "wood": 3 }, "outputType": "weapon", "outputId": 2, "craftTime": 6 },
+  "staff": { "inputs": { "crystal": 2, "wood": 1 }, "outputType": "weapon", "outputId": 3, "craftTime": 10 },
+  "leather_armor": { "inputs": { "herbs": 2 }, "outputType": "armor", "outputId": 1, "craftTime": 8 },
+  "chain_armor": { "inputs": { "iron": 4 }, "outputType": "armor", "outputId": 2, "craftTime": 12 },
+  "plate_armor": { "inputs": { "iron": 6, "gold": 2 }, "outputType": "armor", "outputId": 3, "craftTime": 16 }
+}

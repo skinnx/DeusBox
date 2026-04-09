@@ -1,5 +1,22 @@
 import Phaser from 'phaser';
 import { SPEED_MULTIPLIERS } from '@/core/Constants.js';
+import { Season, WeatherType } from '@/core/Types.js';
+import { eventBus } from '@/core/EventBus.js';
+
+const SEASON_SHORT: Record<string, string> = {
+  [Season.Spring]: 'SPR',
+  [Season.Summer]: 'SUM',
+  [Season.Autumn]: 'AUT',
+  [Season.Winter]: 'WIN',
+};
+
+const WEATHER_SHORT: Record<string, string> = {
+  [WeatherType.Clear]: 'CLR',
+  [WeatherType.Rain]: 'RAN',
+  [WeatherType.Storm]: 'STM',
+  [WeatherType.Fog]: 'FOG',
+  [WeatherType.Snow]: 'SNW',
+};
 
 interface SpeedButton {
   container: Phaser.GameObjects.Container;
@@ -18,6 +35,9 @@ export class TimeControls {
   private gameTime: number = 0;
   private onSpeedChange: (multiplier: number) => void;
   private background: Phaser.GameObjects.Rectangle;
+  private seasonWeatherText: Phaser.GameObjects.Text;
+  private currentSeason: Season = Season.Spring;
+  private currentWeather: WeatherType = WeatherType.Clear;
 
   constructor(
     scene: Phaser.Scene,
@@ -105,6 +125,25 @@ export class TimeControls {
 
     this.container.add([this.dateText, this.timeText]);
 
+    // Season + Weather text (below date/time)
+    this.seasonWeatherText = scene.add.text(timeX, -16, 'SPR | CLR', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#f39c12',
+    });
+    this.seasonWeatherText.setOrigin(0, 0.5);
+    this.container.add(this.seasonWeatherText);
+
+    // Listen for season/weather changes
+    eventBus.on('season:changed', (data: { season: Season }) => {
+      this.currentSeason = data.season;
+      this.updateSeasonWeather();
+    });
+    eventBus.on('weather:changed', (data: { weather: WeatherType }) => {
+      this.currentWeather = data.weather;
+      this.updateSeasonWeather();
+    });
+
     this.updateButtonHighlights();
   }
 
@@ -152,6 +191,12 @@ export class TimeControls {
         btn.label.setColor('#ecf0f1');
       }
     }
+  }
+
+  private updateSeasonWeather(): void {
+    const s = SEASON_SHORT[this.currentSeason] ?? '???';
+    const w = WEATHER_SHORT[this.currentWeather] ?? '???';
+    this.seasonWeatherText.setText(`${s} | ${w}`);
   }
 
   destroy(): void {
