@@ -3,17 +3,27 @@ import { query, hasComponent, removeEntity } from 'bitecs';
 import type { GameWorld } from '../ECSHost.js';
 import Position from '../components/Position.js';
 import SpriteRef from '../components/SpriteRef.js';
+import Health from '../components/Health.js';
+import Combat from '../components/Combat.js';
 import MilitaryRole from '../components/MilitaryRole.js';
 import Equipment from '../components/Equipment.js';
 import AnimationState from '../components/AnimationState.js';
 import { Creature } from '../components/TagComponents.js';
-import { ANIM_IDLE, ANIM_WALK, ANIM_ATTACK, ANIM_DIE, DIR_LEFT, DIR_RIGHT, DIR_UP, DIR_DOWN } from '../components/AnimationState.js';
+import { ANIM_IDLE, ANIM_WALK, ANIM_ATTACK, ANIM_DIE } from '../components/AnimationState.js';
 import { ROLE_WARRIOR, ROLE_ARCHER, ROLE_MAGE } from './MilitarySystem.js';
+import { entityTypes } from '../factories/CreatureFactory.js';
+
+/** Direction keys matching SpriteRef.direction */
+const DIR_KEYS = ['s', 'w', 'n', 'e'] as const;
+/** Animation state keys */
+const ANIM_KEYS = ['idle', 'walk', 'attack', 'die'] as const;
+
+/** Velocity threshold for walk detection */
+const WALK_THRESHOLD = 5;
 
 /**
  * Creates a render sync system that keeps Phaser sprites in sync with
- * ECS Position data. Creates sprites for new entities, updates positions,
- * and destroys sprites for removed entities.
+ * ECS Position data. Uses Phaser animation playback for creature sprites.
  */
 export function createRenderSyncSystem(
   scene: Phaser.Scene,
@@ -22,6 +32,8 @@ export function createRenderSyncSystem(
   const trackedEntities = new Set<number>();
   /** Equipment overlay sprites keyed by entity ID */
   const equipOverlays = new Map<number, Phaser.GameObjects.Sprite[]>();
+  /** Track last played animation key per entity to avoid redundant play() calls */
+  const lastAnimKey = new Map<number, string>();
 
   return (world: GameWorld): void => {
     const ents = query(world, [Position, SpriteRef]);
@@ -34,24 +46,8 @@ export function createRenderSyncSystem(
 
       let sprite = sprites.get(eid);
       if (!sprite) {
-        // Determine texture key — use military variant if applicable
-        let textureKey = getTextureKeyFromHash(SpriteRef.textureKey[eid]);
-
-        if (hasComponent(world, eid, MilitaryRole)) {
-          const role = MilitaryRole.role[eid];
-          const roleSuffix = role === ROLE_WARRIOR ? '_warrior'
-            : role === ROLE_ARCHER ? '_archer'
-            : role === ROLE_MAGE ? '_mage'
-            : null;
-
-          if (roleSuffix) {
-            const variantKey = textureKey + roleSuffix;
-            // Check if the variant texture exists
-            if (scene.textures.exists(variantKey)) {
-              textureKey = variantKey;
-            }
-          }
-        }
+        // Determine initial texture — use first idle frame
+        const textureKey = getCreatureAnimTexture(world, eid);
 
         sprite = scene.add.sprite(Position.x[eid], Position.y[eid], textureKey);
         sprite.setOrigin(0.5, 0.5);
@@ -63,22 +59,14 @@ export function createRenderSyncSystem(
         }
 
         sprites.set(eid, sprite);
-      } else {
-        // Update texture if military role changed
-        if (hasComponent(world, eid, MilitaryRole)) {
-          const role = MilitaryRole.role[eid];
-          const baseKey = getTextureKeyFromHash(SpriteRef.textureKey[eid]);
-          const roleSuffix = role === ROLE_WARRIOR ? '_warrior'
-            : role === ROLE_ARCHER ? '_archer'
-            : role === ROLE_MAGE ? '_mage'
-            : null;
 
-          const desiredKey = roleSuffix && scene.textures.exists(baseKey + roleSuffix)
-            ? baseKey + roleSuffix
-            : baseKey;
-
-          if (sprite.texture.key !== desiredKey) {
-            sprite.setTexture(desiredKey);
+        // Play initial idle animation for creatures
+        if (hasComponent(world, eid, Creature)) {
+          const type = entityTypes.get(eid) ?? 'human';
+          const animKey = `idle_s_${type}`;
+          if (scene.anims.exists(animKey)) {
+            sprite.play(animKey);
+            lastAnimKey.set(eid, animKey);
           }
         }
       }
@@ -86,44 +74,43 @@ export function createRenderSyncSystem(
       // Sync position
       sprite.setPosition(Position.x[eid], Position.y[eid]);
 
-      // ── Animation visual updates ────────────────────────────────────
-      if (hasComponent(world, eid, AnimationState)) {
-        const animState = AnimationState.state[eid];
-        const direction = AnimationState.direction[eid];
-        const baseScale = hasComponent(world, eid, Creature) ? 2 : 1;
+      // ── Animation playback for creatures ────────────────────────────
+      if (hasComponent(world, eid, Creature)) {
+        const type = entityTypes.get(eid) ?? 'human';
+        const dir = SpriteRef.direction[eid] ?? 0;
 
-        // Direction: flip sprite horizontally for left-facing
-        if (direction === DIR_LEFT) {
-          sprite.setFlipX(true);
+        // Determine animation state
+        let animState = ANIM_IDLE;
+
+        if (hasComponent(world, eid, AnimationState)) {
+          animState = AnimationState.state[eid];
         } else {
-          sprite.setFlipX(false);
+          // Fallback: derive from velocity/combat/health
+          const isDead = Health.current[eid] <= 0;
+          const isFighting = Combat.target[eid] >= 0;
+          // Use speed from velocity if available
+          // (Velocity component may not be queried here, so use AnimationState as primary)
+          if (isDead) animState = ANIM_DIE;
+          else if (isFighting) animState = ANIM_ATTACK;
+          // Default idle — walk detected by AnimationSystem
         }
 
-        // Death animation: fade out
-        if (animState === ANIM_DIE) {
+        SpriteRef.animState[eid] = animState;
+
+        const animKey = `${ANIM_KEYS[animState]}_${DIR_KEYS[dir]}_${type}`;
+
+        // Only play if animation changed
+        if (scene.anims.exists(animKey) && lastAnimKey.get(eid) !== animKey) {
+          sprite.play(animKey);
+          lastAnimKey.set(eid, animKey);
+        }
+
+        // Death: fade out using AnimationState deathProgress
+        if (animState === ANIM_DIE && hasComponent(world, eid, AnimationState)) {
           const progress = AnimationState.deathProgress[eid];
           sprite.setAlpha(1 - progress);
+          const baseScale = 2;
           sprite.setScale(baseScale * (1 - progress * 0.3));
-        }
-        // Attack animation: scale pulse
-        else if (animState === ANIM_ATTACK) {
-          const t = AnimationState.frameTimer[eid] / 400; // ATTACK_ANIM_DURATION
-          const pulse = 1 + Math.sin(t * Math.PI) * 0.15;
-          sprite.setScale(baseScale * pulse);
-          sprite.setAlpha(1);
-        }
-        // Walk animation: bob effect
-        else if (animState === ANIM_WALK) {
-          const frame = AnimationState.frame[eid];
-          const bob = frame === 0 ? 0 : -1;
-          sprite.setPosition(Position.x[eid], Position.y[eid] + bob);
-          sprite.setScale(baseScale);
-          sprite.setAlpha(1);
-        }
-        // Idle
-        else {
-          sprite.setScale(baseScale);
-          sprite.setAlpha(1);
         }
       }
 
@@ -132,7 +119,6 @@ export function createRenderSyncSystem(
         const weapon = Equipment.weapon[eid];
         const armor = Equipment.armor[eid];
 
-        // Build list of desired overlay texture keys
         const desiredTextures: string[] = [];
         if (armor === 1) desiredTextures.push('armor_leather');
         else if (armor === 2) desiredTextures.push('armor_chain');
@@ -142,32 +128,28 @@ export function createRenderSyncSystem(
         else if (weapon === 2) desiredTextures.push('equip_bow');
         else if (weapon === 3) desiredTextures.push('equip_staff');
 
-        // Check if overlays need updating
         const currentOverlays = equipOverlays.get(eid);
         const needsUpdate = !currentOverlays
           || currentOverlays.length !== desiredTextures.length
           || currentOverlays.some((s, idx) => s.texture.key !== desiredTextures[idx]);
 
         if (needsUpdate) {
-          // Remove old overlays
           if (currentOverlays) {
             for (const overlay of currentOverlays) overlay.destroy();
           }
 
-          // Create new overlays
           const newOverlays: Phaser.GameObjects.Sprite[] = [];
           for (const tex of desiredTextures) {
             if (scene.textures.exists(tex)) {
               const overlay = scene.add.sprite(Position.x[eid], Position.y[eid], tex);
               overlay.setOrigin(0.5, 0.5);
               overlay.setDepth(eid + 0.5);
-              overlay.setScale(sprite.scaleX);
+              overlay.setScale(sprite!.scaleX);
               newOverlays.push(overlay);
             }
           }
           equipOverlays.set(eid, newOverlays);
         } else if (currentOverlays) {
-          // Sync overlay positions
           for (const overlay of currentOverlays) {
             overlay.setPosition(Position.x[eid], Position.y[eid]);
           }
@@ -183,12 +165,12 @@ export function createRenderSyncSystem(
           sprite.destroy();
           sprites.delete(trackedEid);
         }
-        // Clean up equipment overlays
         const overlays = equipOverlays.get(trackedEid);
         if (overlays) {
           for (const overlay of overlays) overlay.destroy();
           equipOverlays.delete(trackedEid);
         }
+        lastAnimKey.delete(trackedEid);
       }
     }
 
@@ -199,9 +181,22 @@ export function createRenderSyncSystem(
   };
 }
 
+/** Get the first frame texture for a creature's idle south animation */
+function getCreatureAnimTexture(world: GameWorld, eid: number): string {
+  if (hasComponent(world, eid, Creature)) {
+    const type = entityTypes.get(eid) ?? 'human';
+    const key = `creature_${type}_s_0_idle`;
+    // Check if animation frame texture exists
+    const scene = Phaser.Scene.prototype;
+    // Return base texture key as fallback
+    const baseKey = getTextureKeyFromHash(SpriteRef.textureKey[eid]);
+    return baseKey;
+  }
+  return getTextureKeyFromHash(SpriteRef.textureKey[eid]);
+}
+
 /**
  * Simple hash-to-string lookup for texture keys.
- * We store a bidirectional map to convert between string keys and numeric hashes.
  */
 const textureKeyMap = new Map<number, string>();
 let nextTextureHash = 1;

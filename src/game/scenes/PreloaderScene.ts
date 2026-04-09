@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SpriteGenerator } from '@/game/sprites/SpriteGenerator.js';
+import { AnimationGenerator } from '@/game/sprites/AnimationGenerator.js';
 
 export class PreloaderScene extends Phaser.Scene {
   constructor() {
@@ -90,5 +91,8 @@ export class PreloaderScene extends Phaser.Scene {
     SpriteGenerator.generateCreatureSprites(this);
     SpriteGenerator.generateBuildingSprites(this);
     SpriteGenerator.generateEquipmentOverlays(this);
+
+    // Generate creature animation frames and clips via AnimationGenerator
+    AnimationGenerator.generateCreatureAnimations(this);
   }
 }

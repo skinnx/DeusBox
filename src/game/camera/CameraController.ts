@@ -68,9 +68,11 @@ export class CameraController {
 
           cam.setZoom(newZoom);
 
-          // Adjust scroll so the same world point stays under cursor
+          // Immediately snap scroll so pointer world position stays correct
           this.targetScrollX = worldX - pointer.x / newZoom;
           this.targetScrollY = worldY - pointer.y / newZoom;
+          cam.scrollX = this.targetScrollX;
+          cam.scrollY = this.targetScrollY;
         }
       },
     );
