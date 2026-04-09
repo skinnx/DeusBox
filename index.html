@@ -2,26 +2,53 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="DeusBox — A god simulator where you shape worlds, spawn creatures, and command the forces of nature." />
+    <meta name="theme-color" content="#0a0a1a" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="DeusBox" />
+
+    <meta property="og:title" content="DeusBox — God Simulator" />
+    <meta property="og:description" content="Shape worlds. Spawn life. Command the forces of nature." />
+    <meta property="og:type" content="website" />
+
     <title>DeusBox — God Simulator</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
     <style>
-      * {
+      *, *::before, *::after {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-      body {
+      html, body {
+        width: 100%;
+        height: 100%;
         background: #0a0a1a;
         overflow: hidden;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        user-select: none;
       }
       #game-container {
         width: 100vw;
         height: 100vh;
+        position: relative;
       }
-      canvas {
+      #game-container canvas {
         display: block;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
       }
     </style>
   </head>

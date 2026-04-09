@@ -1,35 +1,49 @@
-/**
- * Programmatic audio using Web Audio API oscillators.
- * No external audio files needed — all sounds generated at runtime.
- */
+import { settings } from '@/core/Settings.js';
+
 export class AudioManager {
   private audioContext: AudioContext | null = null;
-  private enabled: boolean = true;
+  private masterGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
 
-  /** Initialize the AudioContext on first user interaction. */
   init(): void {
     if (this.audioContext) return;
     try {
       this.audioContext = new AudioContext();
+      this.masterGain = this.audioContext.createGain();
+      this.sfxGain = this.audioContext.createGain();
+      this.sfxGain.connect(this.masterGain);
+      this.masterGain.connect(this.audioContext.destination);
+      this.updateVolume();
     } catch {
       console.warn('[AudioManager] Web Audio API not available');
     }
   }
 
-  /** Short UI click beep (440Hz, 50ms). */
+  getAudioContext(): AudioContext | null {
+    return this.audioContext;
+  }
+
+  updateVolume(): void {
+    const audio = settings.getAudio();
+    if (this.masterGain && this.audioContext) {
+      this.masterGain.gain.setTargetAtTime(audio.master, this.audioContext.currentTime, 0.05);
+    }
+    if (this.sfxGain && this.audioContext) {
+      this.sfxGain.gain.setTargetAtTime(audio.sfx, this.audioContext.currentTime, 0.05);
+    }
+  }
+
   playUIClick(): void {
-    this.playTone(440, 0.05, 'square');
+    this.playTone(440, 0.05, 'square', 0.12);
   }
 
-  /** God power activation (200Hz, 100ms). */
   playGodPower(): void {
-    this.playTone(200, 0.1, 'sawtooth');
+    this.playTone(200, 0.1, 'sawtooth', 0.15);
   }
 
-  /** Entity spawn ascending tone (300→600Hz, 150ms). */
   playEntitySpawn(): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -39,99 +53,105 @@ export class AudioManager {
     osc.frequency.setValueAtTime(300, now);
     osc.frequency.linearRampToValueAtTime(600, now + 0.15);
 
-    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.setValueAtTime(0.12, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.sfxGain!);
 
     osc.start(now);
     osc.stop(now + 0.15);
   }
 
-  /** Disaster: noise burst (100ms white noise). */
   playDisaster(): void {
-    this.playNoise(0.1);
+    this.playNoise(0.15);
   }
 
-  /** Combat: sharp click (800Hz, 30ms). */
   playCombat(): void {
-    this.playTone(800, 0.03, 'square');
+    this.playTone(800, 0.03, 'square', 0.1);
   }
 
-  /** Button hover: very short high tone (800Hz, 20ms). */
   playButtonHover(): void {
-    this.playTone(800, 0.02, 'sine');
+    this.playTone(800, 0.02, 'sine', 0.06);
   }
 
-  /** War horn: low frequency buzz (100Hz, 100ms). */
   playWarHorn(): void {
-    this.playTone(100, 0.1, 'sawtooth');
-  }
-
-  /** Level up: ascending notes (400→800Hz, 200ms). */
-  playLevelUp(): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, now);
-    osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.linearRampToValueAtTime(120, now + 0.3);
+    osc.frequency.linearRampToValueAtTime(80, now + 0.5);
 
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.1);
+    gain.gain.setValueAtTime(0.15, now + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.sfxGain!);
 
     osc.start(now);
-    osc.stop(now + 0.2);
+    osc.stop(now + 0.5);
   }
 
-  /** Craft: metal clink (1200Hz square, 50ms). */
-  playCraft(): void {
-    this.playTone(1200, 0.05, 'square');
-  }
-
-  /** Trade: coin sound (2000Hz + 3000Hz quick sequence). */
-  playTrade(): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+  playLevelUp(): void {
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
-    // First ding
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(2000, now);
-    gain1.gain.setValueAtTime(0.1, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.08);
+    const notes = [400, 500, 600, 800];
+    for (let i = 0; i < notes.length; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    // Second ding (higher)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(3000, now + 0.06);
-    gain2.gain.setValueAtTime(0.1, now + 0.06);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now + 0.06);
-    osc2.stop(now + 0.14);
+      osc.type = 'sine';
+      const t = now + i * 0.08;
+      osc.frequency.setValueAtTime(notes[i]!, t);
+
+      gain.gain.setValueAtTime(0.1, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    }
   }
 
-  /** Season change: gentle chime (600Hz sine, 300ms with fade). */
+  playCraft(): void {
+    this.playTone(1200, 0.05, 'square', 0.08);
+  }
+
+  playTrade(): void {
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
+    const now = ctx.currentTime;
+
+    const freqs = [2000, 2500, 3000];
+    for (let i = 0; i < freqs.length; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = now + i * 0.06;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqs[i]!, t);
+      gain.gain.setValueAtTime(0.08, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t);
+      osc.stop(t + 0.08);
+    }
+  }
+
   playSeasonChange(): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -142,29 +162,81 @@ export class AudioManager {
     osc.frequency.linearRampToValueAtTime(900, now + 0.15);
     osc.frequency.linearRampToValueAtTime(600, now + 0.3);
 
-    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain!);
+
+    osc.start(now);
+    osc.stop(now + 0.4);
+  }
+
+  playDeath(): void {
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.linearRampToValueAtTime(80, now + 0.3);
+
+    gain.gain.setValueAtTime(0.08, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.sfxGain!);
 
     osc.start(now);
     osc.stop(now + 0.3);
   }
 
+  playBuildComplete(): void {
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
+    const now = ctx.currentTime;
+
+    const freqs = [200, 300, 400];
+    for (let i = 0; i < freqs.length; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = now + i * 0.1;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freqs[i]!, t);
+      gain.gain.setValueAtTime(0.1, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    }
+  }
+
   setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
+    settings.update({ audio: { enabled } });
+    if (this.masterGain && this.audioContext) {
+      this.masterGain.gain.setTargetAtTime(
+        enabled ? settings.getAudio().master : 0,
+        this.audioContext.currentTime,
+        0.05,
+      );
+    }
   }
 
   isEnabled(): boolean {
-    return this.enabled;
+    return settings.getAudio().enabled;
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────
+  private isReady(): boolean {
+    return settings.getAudio().enabled && this.audioContext !== null && this.sfxGain !== null;
+  }
 
-  private playTone(frequency: number, duration: number, type: OscillatorType = 'sine'): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+  private playTone(frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.15): void {
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -173,19 +245,19 @@ export class AudioManager {
     osc.type = type;
     osc.frequency.setValueAtTime(frequency, now);
 
-    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.setValueAtTime(volume, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.sfxGain!);
 
     osc.start(now);
     osc.stop(now + duration);
   }
 
   private playNoise(duration: number): void {
-    if (!this.enabled || !this.audioContext) return;
-    const ctx = this.audioContext;
+    if (!this.isReady()) return;
+    const ctx = this.audioContext!;
     const now = ctx.currentTime;
 
     const bufferSize = Math.floor(ctx.sampleRate * duration);
@@ -200,11 +272,11 @@ export class AudioManager {
     source.buffer = buffer;
 
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.setValueAtTime(0.1, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     source.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.sfxGain!);
 
     source.start(now);
     source.stop(now + duration);

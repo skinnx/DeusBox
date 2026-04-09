@@ -1,0 +1,14 @@
+{
+  "name": "DeusBox — God Simulator",
+  "short_name": "DeusBox",
+  "description": "A god simulator where you shape worlds, spawn creatures, and command the forces of nature.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

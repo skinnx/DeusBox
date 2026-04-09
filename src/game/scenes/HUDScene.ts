@@ -19,6 +19,8 @@ import { DamageNumbers } from '@/ui/DamageNumbers.js';
 import { NotificationSystem } from '@/ui/NotificationSystem.js';
 import { TerritoryOverlay } from '@/ui/TerritoryOverlay.js';
 import { eventBus } from '@/core/EventBus.js';
+import { DebugOverlay } from '@/ui/DebugOverlay.js';
+import { settings } from '@/core/Settings.js';
 
 const PANEL_WIDTH = 180;
 
@@ -64,6 +66,7 @@ export class HUDScene extends Phaser.Scene {
   private damageNumbers: DamageNumbers | null = null;
   private notificationSystem: NotificationSystem | null = null;
   private territoryOverlay: TerritoryOverlay | null = null;
+  private debugOverlay: DebugOverlay | null = null;
 
   constructor() {
     super('HUD');
@@ -182,6 +185,23 @@ export class HUDScene extends Phaser.Scene {
     if (gameObjForKeys && gameObjForKeys.input.keyboard) {
       gameObjForKeys.input.keyboard.on('keydown-T', () => {
         if (this.territoryOverlay) this.territoryOverlay.toggle();
+      });
+    }
+
+    // Debug overlay
+    this.debugOverlay = new DebugOverlay(this);
+
+    // F3 to toggle debug overlay
+    if (gameObjForKeys && gameObjForKeys.input.keyboard) {
+      gameObjForKeys.input.keyboard.on('keydown-F3', () => {
+        if (this.debugOverlay) this.debugOverlay.toggle();
+      });
+
+      // ESC to open settings
+      gameObjForKeys.input.keyboard.on('keydown-ESC', () => {
+        this.scene.pause('Game');
+        this.scene.pause('HUD');
+        this.scene.launch('Settings', { returnTo: 'HUD' });
       });
     }
 
@@ -794,6 +814,7 @@ export class HUDScene extends Phaser.Scene {
     // ── Wave 19: Update damage numbers & notifications ────────────────
     if (this.damageNumbers) this.damageNumbers.update();
     if (this.notificationSystem) this.notificationSystem.update();
+    if (this.debugOverlay) this.debugOverlay.update();
   }
 
   /** Get the DamageNumbers instance (for external systems to spawn damage text). */

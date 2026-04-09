@@ -66,8 +66,13 @@ import { hashTextureKey, destroyEntitySprite } from '@/game/ecs/systems/RenderSy
 import { DayNightCycle } from '@/game/effects/DayNightCycle.js';
 import { ParticleSystem } from '@/game/effects/ParticleSystem.js';
 import { AudioManager } from '@/game/audio/AudioManager.js';
+import { AmbientMusicGenerator } from '@/game/audio/AmbientMusicGenerator.js';
 import { SaveManager } from '@/game/save/SaveManager.js';
 import type { SaveGameData, SaveSlot, SavedEntity } from '@/game/save/SaveData.js';
+import { settings } from '@/core/Settings.js';
+import { perfMonitor } from '@/core/PerformanceMonitor.js';
+import { errorHandler } from '@/core/ErrorHandler.js';
+import { SceneTransition } from '@/ui/SceneTransition.js';
 
 import creatureData from '@/data/creatures.json';
 
@@ -87,12 +92,15 @@ export class GameScene extends Phaser.Scene {
   private gameTime: number = 0;
   private seed: number = 42;
   private autoSaveTimer: number = 0;
-  private static readonly AUTO_SAVE_INTERVAL = 60000; // 60 seconds
+  private static readonly AUTO_SAVE_INTERVAL = 60000;
+  private ambientMusic: AmbientMusicGenerator;
+  private transition: SceneTransition | null = null;
 
   constructor() {
     super('Game');
     this.ecsHost = ECSHost.getInstance();
     this.audioManager = AudioManager.getInstance();
+    this.ambientMusic = new AmbientMusicGenerator();
   }
 
   create(): void {
@@ -258,8 +266,17 @@ export class GameScene extends Phaser.Scene {
 
     // ── Wave 7: Audio Manager ────────────────────────────────────────────
     // Init on first pointer down
+    this.transition = new SceneTransition(this);
+    this.transition.fadeIn({ duration: 600 });
+
     this.input.once('pointerdown', () => {
       this.audioManager.init();
+      const ctx = this.audioManager.getAudioContext();
+      if (ctx) {
+        this.ambientMusic.init(ctx);
+        this.ambientMusic.setMood('peaceful');
+        this.ambientMusic.start();
+      }
     });
 
     // ── Wave 7: Keyboard shortcuts for save/load ─────────────────────────
@@ -324,6 +341,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    this.ambientMusic.stop();
+    this.ambientMusic.destroy();
     eventBus.removeAllListeners('damage:dealt');
     eventBus.removeAllListeners('entity:spawned');
     eventBus.removeAllListeners('disaster:start');
@@ -341,12 +360,9 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     this.frameCount++;
 
-    if (this.frameCount % 120 === 0) {
-      const fps = this.game.loop.actualFps;
-      console.log(
-        `[GameScene] Frame ${this.frameCount} | FPS: ${fps.toFixed(0)} | Delta: ${delta.toFixed(1)}ms`,
-      );
-    }
+    const fps = this.game.loop.actualFps;
+    const entityCount = getAllEntities(this.ecsHost.world).length;
+    perfMonitor.update(fps, delta, entityCount);
 
     // Track game time
     this.gameTime += delta * this.speedMultiplier;
@@ -386,11 +402,17 @@ export class GameScene extends Phaser.Scene {
       this.particleSystem.update(delta);
     }
 
-    // Auto-save
-    this.autoSaveTimer += delta;
-    if (this.autoSaveTimer >= GameScene.AUTO_SAVE_INTERVAL) {
-      this.autoSaveTimer = 0;
-      this.autoSave(1);
+    if (settings.getGameplay().autoSave) {
+      this.autoSaveTimer += delta;
+      const interval = settings.getGameplay().autoSaveInterval;
+      if (this.autoSaveTimer >= interval) {
+        this.autoSaveTimer = 0;
+        this.autoSave(1);
+      }
+    }
+
+    if (this.dayNightCycle && !settings.getGraphics().dayNightCycle) {
+      this.dayNightCycle.update(0, 0);
     }
 
     // ── Wave 8: Entity hover detection ──────────────────────────────────
