@@ -78,6 +78,9 @@ export class HUDScene extends Phaser.Scene {
       this.tooltip.initGameKeyboard(gameSceneObj);
     }
 
+    // Initialize ContextMenu container (can't be done in constructor before scene is ready)
+    this.contextMenu.init();
+
     const { width, height } = this.scale;
 
     // 1. Time Controls (top-center)

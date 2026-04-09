@@ -76,7 +76,7 @@ const SPAWN_ITEMS: MenuItem[] = [
  */
 export class ContextMenu {
   private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
+  private container: Phaser.GameObjects.Container | null = null;
   private itemContainers: Phaser.GameObjects.Container[] = [];
   private submenuContainer: Phaser.GameObjects.Container | null = null;
   private submenuItemContainers: Phaser.GameObjects.Container[] = [];
@@ -91,19 +91,14 @@ export class ContextMenu {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+  }
 
-    this.container = scene.add.container(0, 0);
+  /** Call from HUDScene.create() after scene is fully initialized. */
+  init(): void {
+    this.container = this.scene.add.container(0, 0);
     this.container.setScrollFactor(0);
     this.container.setDepth(3000);
     this.container.setVisible(false);
-
-    // Keyboard shortcuts (on HUDScene's keyboard which is disabled —
-    // we listen on GameScene's keyboard via the reference we get)
-    const keyboard = scene.input.keyboard;
-    if (keyboard) {
-      this.keyC = keyboard.addKey('C');
-      this.keyEsc = keyboard.addKey('ESC');
-    }
   }
 
   /**
@@ -150,6 +145,7 @@ export class ContextMenu {
 
   private show(screenX: number, screenY: number, items: MenuItem[]): void {
     this.hide();
+    if (!this.container) return;
     this.isVisible = true;
     this.container.setVisible(true);
 
@@ -263,6 +259,7 @@ export class ContextMenu {
 
   private showSubmenu(items: MenuItem[]): void {
     this.clearSubmenu();
+    if (!this.container) return;
 
     const parentX = this.container.x + ITEM_WIDTH;
     const parentY = this.container.y;
@@ -357,14 +354,16 @@ export class ContextMenu {
 
   hide(): void {
     this.isVisible = false;
-    this.container.setVisible(false);
+    if (this.container) {
+      this.container.setVisible(false);
+    }
 
     // Clear all children
     for (const ic of this.itemContainers) {
       ic.destroy();
     }
     this.itemContainers = [];
-    this.container.removeAll(true);
+    this.container?.removeAll(true);
 
     this.clearSubmenu();
   }
@@ -375,7 +374,8 @@ export class ContextMenu {
 
   destroy(): void {
     this.hide();
-    this.container.destroy();
+    this.container?.destroy();
+    this.container = null;
   }
 }
 
